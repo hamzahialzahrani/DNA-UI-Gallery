@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050606">
+<title>DNA / TAPEWORK — Autonomous Execution Recorder</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050606;color:#eee6c9;font-family:Consolas,monospace}
+  canvas{display:block;width:100vw;height:100vh;outline:none;touch-action:manipulation;cursor:crosshair}
+  #hint{position:fixed;bottom:6px;right:10px;color:#74736b;font:10px Consolas,monospace;pointer-events:none;opacity:.65}
+</style>
+</head>
+<body>
+<canvas id="tape" tabindex="0" aria-label="Interactive DNA Tapework multi-agent command console"></canvas>
+<div id="hint">CANVAS ENGINE / FICTIONAL LIVE SIMULATION</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('tape');
+const ctx=canvas.getContext('2d',{alpha:false});
+const VW=1600,VH=960,TAU=Math.PI*2;
+let scale=1,offsetX=0,offsetY=0,dpr=1,last=performance.now();
+const palettes=[
+ {name:'BURNISHED AMBER',bg:'#050606',surface:'#0c0e0c',surface2:'#151813',ink:'#eee5c9',muted:'#7d8276',line:'#454c43',low:'#292f2a',main:'#ffa85d',hot:'#ff7050',second:'#c4d685',cool:'#8c9a8b'},
+ {name:'ARCTIC PHOSPHOR',bg:'#050708',surface:'#0a1013',surface2:'#132028',ink:'#daeaf0',muted:'#708f98',line:'#34545e',low:'#1d343d',main:'#7bdbef',hot:'#ed9986',second:'#b6f2c7',cool:'#8cb3c2'},
+ {name:'CRIMSON MAINFRAME',bg:'#070505',surface:'#140c0b',surface2:'#241614',ink:'#f1d5c5',muted:'#a17a73',line:'#623f3c',low:'#382420',main:'#fc7b65',hot:'#ffcc7a',second:'#e5aba0',cool:'#b98576'},
+ {name:'MOSS / PAPER',bg:'#050806',surface:'#0c140f',surface2:'#192119',ink:'#e2e9ce',muted:'#8c9c82',line:'#4d6150',low:'#283a2d',main:'#b4e591',hot:'#f4b76d',second:'#c1d8bc',cool:'#8cad94'}
+];
+let themeIndex=0; const C=()=>palettes[themeIndex];
+const jobs=[
+ {id:'RUN-081',name:'Compile agent contracts',phase:3,progress:71,tokens:13850,tests:'12/14',status:'RUNNING',check:[1,1,1,0]},
+ {id:'RUN-082',name:'Validate memory index',phase:4,progress:93,tokens:8120,tests:'19/20',status:'VERIFY',check:[1,1,1,0]},
+ {id:'RUN-083',name:'Patch schema resolver',phase:2,progress:39,tokens:4800,tests:'03/12',status:'QUEUED',check:[1,0,0,0]},
+ {id:'RUN-084',name:'Shard 24 language tests',phase:5,progress:100,tokens:27500,tests:'24/24',status:'DONE',check:[1,1,1,1]},
+ {id:'RUN-085',name:'Resume inference batch',phase:1,progress:23,tokens:2900,tests:'00/08',status:'SLEEP',check:[1,0,0,0]},
+ {id:'RUN-086',name:'Audit tool permissions',phase:4,progress:88,tokens:5900,tests:'11/13',status:'VERIFY',check:[1,1,1,0]}
+];
+const stages=[
+ {title:'CAPTURE',sub:'Goal registered',detail:'Capture intent, user constraints, linked project and requested output.',checks:['Receive request envelope','Normalize input payload','Bind project and actor','Assign run identifier']},
+ {title:'PLAN',sub:'Contract authored',detail:'Turn the goal into a hierarchical bounded plan with machine-checkable acceptance.',checks:['Decompose into stages','Attach acceptance contracts','Estimate limits and dependencies','Publish execution plan']},
+ {title:'SCHEDULE',sub:'Workers reserved',detail:'Assign bounded tasks to workers. Sleeping jobs should wake from events, not token-burning polls.',checks:['Form shards and batches','Reserve parallel slots','Register completion callbacks','Enqueue work packets']},
+ {title:'EXECUTE',sub:'Artifacts produced',detail:'Run bounded work and record outputs, token usage, checkpoints and tool events.',checks:['Dispatch executable task','Collect outputs and traces','Persist intermediate state','Avoid repeated status polling']},
+ {title:'VERIFY',sub:'Proof assembled',detail:'Run deterministic tests before trusting agent claims; route failed evidence back for repair.',checks:['Execute test commands','Check expected outcomes','Inspect failed assertions','Approve or reopen work']},
+ {title:'ARCHIVE',sub:'Memory sealed',detail:'Commit accepted artifacts, summarize decisions, and preserve reproducible run metadata.',checks:['Commit approved artifacts','Save context/checkpoint','Attach run version and costs','Publish final result']}
+];
+const state={run:true,jam:false,selected:0,selectedStage:3,typed:'',typedFocus:false,modal:null,modalOpen:0,
+ t:0,beat:0,lastEvent:0,simClock:0,evtIndex:0,rotation:0,tapePhase:0,scan:0,processed:94256,tokenTotal:78362,throughput:68,errors:1,
+ events:[],punches:[],flakes:[],tickets:[],hover:null,mouse:{x:-50,y:-50},motion:[],recentBurn:0,nowText:0};
+const slots=[];
+const noise=Array.from({length:320},(_,i)=>({x:(i*137.71)%VW,y:(i*301.17)%VH,a:.025+((i*23)%19)/1100}));
+let idCounter=87;
+function current(){return jobs[state.selected]}
+function rr(x,y,w,h,r=0){ctx.beginPath(); if(r<=0){ctx.rect(x,y,w,h);return}const d=Math.min(r,w/2,h/2);ctx.moveTo(x+d,y);ctx.arcTo(x+w,y,x+w,y+h,d);ctx.arcTo(x+w,y+h,x,y+h,d);ctx.arcTo(x,y+h,x,y,d);ctx.arcTo(x,y,x+w,y,d);ctx.closePath()}
+function fill(x,y,w,h,color,r=0){ctx.fillStyle=color;rr(x,y,w,h,r);ctx.fill()}
+function stroke(x,y,w,h,color,r=0,line=1){ctx.strokeStyle=color;ctx.lineWidth=line;rr(x+.5,y+.5,w-1,h-1,r);ctx.stroke()}
+function line(x,y,a,b,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(a,b);ctx.stroke()}
+function txt(text,x,y,size=12,color=C().ink,weight='normal',align='left',font='monospace'){
+ ctx.font=`${weight} ${size}px ${font}`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(String(text),x,y)
+}
+function clip(x,y,w,h,fn){ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();fn();ctx.restore()}
+function tag(label,x,y,color=C().main){txt(label,x,y,10,color,'bold')}
+function hotLine(x,y,w,color=C().main){fill(x,y,w,2,color)}
+function number(n){return Math.round(n).toLocaleString('en-US')}
+function hit(id,x,y,w,h,fn){slots.push({id,x,y,w,h,fn})}
+function flick(c,amt=.75){return c}
+function back(){
+ const p=C();fill(0,0,VW,VH,p.bg);fill(0,0,VW,9,p.main);
+ const grd=ctx.createRadialGradient(760,430,80,760,430,850);
+ grd.addColorStop(0,p.surface2);grd.addColorStop(.64,p.surface);grd.addColorStop(1,p.bg);
+ ctx.globalAlpha=.62;fill(0,10,VW,VH-10,grd);ctx.globalAlpha=1;
+ for(let x=0;x<VW;x+=52)line(x,0,x,VH,p.low,.5);
+ for(let y=0;y<VH;y+=52)line(0,y,VW,y,p.low,.5);
+ noise.forEach(d=>fill(d.x,d.y,1,1,`rgba(220,210,180,${d.a})`));
+ for(let i=0;i<45;i++)fill(0,i*23+state.t*.005%23,VW,1,'rgba(0,0,0,.10)');
+ const vig=ctx.createRadialGradient(800,460,270,800,460,970);vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(.74,'rgba(0,0,0,.03)');vig.addColorStop(1,'rgba(0,0,0,.80)');fill(0,0,VW,VH,vig)
+}
+function frameAccent(x,y,w,h){const p=C();stroke(x,y,w,h,p.line);fill(x,y,3,18,p.main);fill(x+w-3,y+h-18,3,18,p.main)}
+function header(){const p=C();fill(30,25,1540,79,p.surface);stroke(30,25,1540,79,p.line);
+ fill(30,25,94,79,p.main);txt('07',78,83,58,p.bg,'bold','center','sans-serif');
+ txt('DNA',147,59,30,p.ink,'bold','left','sans-serif');txt('/ TAPEWORK',237,59,26,p.main,'bold','left','sans-serif');
+ txt('AUTONOMOUS EXECUTION RECORDER   •   MAGNETIC OPERATIONS SYSTEM',147,80,10,p.muted);
+ line(615,40,615,89,p.line);
+ txt('RUN',642,49,10,p.muted);txt(current().id,643,72,18,p.ink,'bold');
+ txt('TRANSPORT',780,49,10,p.muted);txt(state.jam?'JAMMED':state.run?'ACTIVE':'HOLD',780,72,18,state.jam?p.hot:p.second,'bold');
+ txt('CAPACITY',946,49,10,p.muted);txt(number(state.processed)+' / 100K',946,72,16,p.ink,'bold');
+ let bx=1150;[['HOLD',()=>toggle(),85],['ADVANCE',()=>stepEvent(),105],['LOAD JOB',()=>addJob(),110],['SKIN',()=>cycleTheme(),75]].forEach(([text,fn,w])=>{button(text,bx,42,w,44,fn,false);bx+=w+8});
+}
+function button(label,x,y,w,h,fn,active=false){const p=C();fill(x,y,w,h,active?p.main:p.surface2);stroke(x,y,w,h,active?p.main:p.line);txt(label,x+w/2,y+h/2+4,11,active?p.bg:p.ink,'bold','center');hit('btn:'+label,x,y,w,h,fn)}
+function panelTitle(index,name,x,y,accent=C().main){tag(`${index} / ${name}`,x,y,accent)}
+function library(){const p=C(),x=30,y=126,w=288,h=720;
+ fill(x,y,w,h,p.surface);frameAccent(x,y,w,h);
+ panelTitle('01','RUN LIBRARY',x+18,y+24);
+ txt('SELECT ACTIVE SPOOL',x+18,y+45,11,p.muted);
+ txt(`${jobs.length} RUNS LOADED`,x+w-18,y+45,10,p.second,'normal','right');
+ jobs.slice(0,8).forEach((job,i)=>{
+  let cy=y+65+i*88,active=i===state.selected;
+  fill(x+12,cy,w-24,79,active?p.surface2:p.bg);
+  if(active){fill(x+12,cy,3,79,p.main);stroke(x+12,cy,w-24,79,p.main)} else stroke(x+12,cy,w-24,79,p.low);
+  txt(job.id,x+24,cy+19,12,active?p.main:p.ink,'bold');
+  txt(job.status,x+w-24,cy+19,10,job.status==='DONE'?p.second:job.status==='SLEEP'?p.muted:p.hot,'bold','right');
+  let title=job.name.length>27?job.name.slice(0,26)+'…':job.name;
+  txt(title,x+24,cy+39,11,p.ink);
+  fill(x+24,cy+52,w-48,5,p.low);fill(x+24,cy+52,(w-48)*job.progress/100,5,job.status==='DONE'?p.second:p.main);
+  txt(`${Math.round(job.progress)}%`,x+24,cy+72,10,p.muted);
+  txt(`${number(job.tokens)} tok`,x+w-24,cy+72,10,p.muted,'normal','right');
+  hit('job:'+i,x+12,cy,w-24,79,()=>{state.selected=i;state.selectedStage=Math.min(5,jobs[i].phase);pushEvent(`OPERATOR / SELECTED ${jobs[i].id}`)});
+ });
+ line(x+14,782,x+w-14,782,p.line);
+ txt('01 SELECT    02 INSPECT    03 OPERATE',x+18,804,10,p.muted);
+ txt('ACTIVE TAPE CAN BE REWOUND BY REPLAY',x+18,825,10,p.muted);
+}
+function reel(cx,cy,r,angle,fillPercent,reverse=false){
+ const p=C();ctx.save();ctx.translate(cx,cy);ctx.rotate(angle*(reverse?-1:1));
+ for(let j=0;j<10;j++){
+ const rr2=r-j*3;ctx.strokeStyle=j%3===0?p.line:p.low;ctx.lineWidth=j%3===0?3:1;
+ ctx.beginPath();ctx.arc(0,0,rr2,0,TAU);ctx.stroke();
+ }
+ ctx.strokeStyle=p.muted;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,r*.68,0,TAU);ctx.stroke();
+ for(let i=0;i<6;i++){
+ ctx.save();ctx.rotate(i*TAU/6);
+ fill(r*.22,-8,r*.52,16,i%2?p.surface2:p.line,5);
+ fill(r*.40,-3,r*.27,6,p.main,2);
+ ctx.restore();}
+ ctx.rotate(-angle*.65);fill(-20,-20,40,40,p.bg,6);stroke(-20,-20,40,40,p.main,6,2);
+ txt(reverse?'O':'I',0,6,22,p.ink,'bold','center');ctx.restore();
+ txt(`${Math.round(fillPercent)}%`,cx,cy+r+39,12,p.second,'bold','center');
+}
+function machine(){const p=C(),x=338,y=126,w=824,h=472;
+ fill(x,y,w,h,p.surface);frameAccent(x,y,w,h);
+ panelTitle('02','MAGNETIC EXECUTION DECK',x+23,y+27);
+ txt('PHYSICAL-LOGICAL RUN TRANSPORT  /  REV 03',x+w-23,y+27,11,p.muted,'normal','right');
+ txt('INPUT',x+218,y+66,12,p.muted,'bold','center');txt('OUTPUT',x+609,y+66,12,p.muted,'bold','center');
+ fill(x+18,y+78,w-36,331,p.bg);stroke(x+18,y+78,w-36,331,p.low);
+ // The tape feed bridges reels and remains a distinct physical strip.
+ const lhs=x+213,rhs=x+609,cy=y+233;
+ let speed=state.run&&!state.jam?state.tapePhase:0;
+ fill(lhs+60,cy-37,rhs-lhs-120,74,p.surface2);
+ for(let row=0;row<2;row++){
+  const yy=cy-28+row*53;
+  clip(lhs+58,yy,rhs-lhs-116,14,()=>{
+   for(let i=-3;i<40;i++){
+     const px=lhs+58+i*21-speed%21;
+     fill(px,yy,11,9,p.bg,1);stroke(px,yy,11,9,p.line,1);
+   }
+  })
+ }
+ clip(lhs+62,cy-14,rhs-lhs-124,29,()=>{
+  txt('010010 / TASK / 001101 / MEM / 111000 / VALID / 010011',lhs+62-(speed*1.2)%(rhs-lhs),cy+5,11,p.second,'bold');
+  txt('010010 / TASK / 001101 / MEM / 111000 / VALID / 010011',lhs+62+(rhs-lhs)-(speed*1.2)%(rhs-lhs),cy+5,11,p.second,'bold');
+ });
+ const ang=state.rotation;
+ reel(lhs,cy,90,ang,Math.max(4,88-state.processed/4000),false);
+ reel(rhs,cy,90,ang,Math.min(97,state.processed/1100),true);
+ // Tape reading needle, moving at varying operational load
+ let sx=x+400+Math.sin(state.t*.001)*93;
+ line(sx,cy-68,sx,cy+72,p.hot,2);fill(sx-8,cy-72,16,9,p.hot);
+ fill(sx-35,cy+83,70,17,p.surface2);txt('READ H',sx,cy+95,10,p.hot,'bold','center');
+ txt('FEED RATE',x+33,y+377,10,p.muted);
+ txt(`${number(state.throughput)} REC/SEC`,x+33,y+399,19,p.ink,'bold');
+ txt('LAST WRITE',x+270,y+377,10,p.muted);
+ txt(state.events.length?state.events[0].msg.slice(0,35):'WAITING FOR INPUT',x+270,y+398,12,p.second);
+ txt('TAPE LOAD',x+680,y+377,10,p.muted);
+ txt(state.jam?'! BLOCKED':state.run?'ACCEPTING':'STANDBY',x+680,y+398,14,state.jam?p.hot:p.main,'bold');
+ // readout below with a scanning ruler
+ const bx=x+23,by=y+427,bw=w-46;
+ line(bx,by,bx+bw,by,p.line,2);
+ for(let i=0;i<=48;i++){
+ const xx=bx+i*bw/48;line(xx,by,xx,by+(i%6===0?14:7),p.muted);
+ }
+ fill(bx+((state.scan%1)*bw),by-6,3,22,p.hot);
+ txt('EXPERIMENT / TAPE-INDEX  001—048',x+23,y+460,10,p.muted);
+}
+function stagesPanel(){const p=C(),x=1181,y=126,w=389,h=423;
+ fill(x,y,w,h,p.surface);frameAccent(x,y,w,h);
+ panelTitle('03','ASSEMBLY ORDER',x+18,y+24);
+ txt('EXECUTION PIPELINE  /  CLICK FOR INSPECTOR',x+18,y+45,10,p.muted);
+ stages.forEach((s,i)=>{
+ let cy=y+57+i*58,active=i===current().phase,selected=i===state.selectedStage;
+ if(selected)fill(x+9,cy-1,w-18,53,p.surface2);
+ fill(x+17,cy+7,40,36,active?p.main:p.low);
+ txt(String(i+1).padStart(2,'0'),x+37,cy+32,18,active?p.bg:p.ink,'bold','center');
+ txt(s.title,x+69,cy+20,13,selected?p.main:p.ink,'bold');
+ txt(s.sub,x+69,cy+38,10,p.muted);
+ if(i<current().phase) txt('SEALED',x+w-19,cy+29,10,p.second,'bold','right');
+ else if(active)txt(state.jam?'LOCKED':'IN WORK',x+w-19,cy+29,10,p.hot,'bold','right');
+ else txt('PENDING',x+w-19,cy+29,10,p.muted,'normal','right');
+ if(i<5)line(x+39,cy+43,x+39,cy+57,p.line,2);
+ hit('stage:'+i,x+10,cy-1,w-20,52,()=>showModal('stage',i));
+ });
+}
+function bottomDeck(){const p=C();
+ // punchcard module
+ const x=338,y=610,w=301,h=238;
+ fill(x,y,w,h,p.surface);frameAccent(x,y,w,h);panelTitle('04','PUNCHED TASK CARDS',x+17,y+24);
+ txt('SCHEDULER / 04 LANES',x+17,y+45,10,p.muted);
+ for(let i=0;i<4;i++){
+  let cy=y+62+i*39;
+  fill(x+15,cy,w-30,32,p.surface2);stroke(x+15,cy,w-30,32,p.low);
+  fill(x+21,cy+6,25,20,i===0?p.main:p.low);
+  txt('0'+(i+1),x+34,cy+20,12,i===0?p.bg:p.ink,'bold','center');
+  const labels=['PLANNER / CONTRACT','CODER / PATCH','VERIFY / HARNESS','WATCH / WAKE'];
+  txt(labels[i],x+55,cy+14,10,p.ink,'bold');
+  for(let k=0;k<13;k++)fill(x+55+k*15,cy+20,9,6,(k+i*7+Math.floor(state.tapePhase/25))%5===0?p.bg:p.line);
+ }
+ txt('ZERO-POLL WAITING:  7 SLEEPERS',x+17,y+228,10,p.second);
+ // Token furnace: bars + falling burnt segments, no floating agent dots.
+ const fx=652,fy=610,fw=234,fh=238;
+ fill(fx,fy,fw,fh,p.surface);frameAccent(fx,fy,fw,fh);panelTitle('05','TOKEN PRESS',fx+15,fy+24);
+ txt('SPENT / RUN',fx+15,fy+53,10,p.muted);
+ txt(number(current().tokens),fx+15,fy+84,29,p.ink,'bold','left','sans-serif');
+ txt('TOKENS',fx+15,fy+101,10,p.main);
+ for(let i=0;i<18;i++){
+  let bh=5+((i*13+state.recentBurn/250)%35);
+  fill(fx+16+i*11,fy+124+36-bh,7,bh,i%6===0?p.hot:p.main);
+ }
+ line(fx+16,fy+164,fx+fw-16,fy+164,p.line);
+ txt('COST PRINT HEAD',fx+15,fy+187,10,p.muted);
+ txt(`${number(state.tokenTotal)} TOTAL`,fx+15,fy+207,14,p.second,'bold');
+ // validation strip
+ const vx=899,vy=610,vw=263,vh=238;
+ fill(vx,vy,vw,vh,p.surface);frameAccent(vx,vy,vw,vh);panelTitle('06','PROOF CONTACT SHEET',vx+16,vy+24);
+ txt('ACCEPTANCE / DETERMINISTIC',vx+16,vy+44,10,p.muted);
+ for(let row=0;row<5;row++)for(let col=0;col<9;col++){
+ let passed=(col+row*9)<35 || ((row+col)%13===0 && !state.jam);
+ let xx=vx+17+col*25,yy=vy+63+row*25;
+ fill(xx,yy,17,17,passed?p.second:row===4?p.hot:p.low);
+ if(passed)fill(xx+7,yy+7,3,3,p.bg);
+ }
+ txt(`${state.jam?'34':'38'} / 45 CHECKS SEALED`,vx+17,vy+220,12,p.ink,'bold');
+}
+function teletype(){const p=C(),x=1181,y=563,w=389,h=285;
+ fill(x,y,w,h,p.surface);frameAccent(x,y,w,h);panelTitle('07','SERIAL TELETYPE',x+18,y+24);
+ txt('PROTOCOL 08 / TYPE `help`',x+w-18,y+24,10,p.muted,'normal','right');
+ const area={x:x+15,y:y+40,w:w-30,h:196};fill(area.x,area.y,area.w,area.h,p.bg);stroke(area.x,area.y,area.w,area.h,p.low);
+ clip(area.x+9,area.y+8,area.w-18,area.h-16,()=>{
+  txt('>> CONNECTED TO DNA RUNTIME / 00:1A',area.x+10,area.y+13,10,p.second);
+  const items=state.events.slice(0,10).reverse();
+  items.forEach((ev,i)=>{
+   const text=ev.msg.length>54?ev.msg.slice(0,53):ev.msg;
+   txt(text,area.x+10,area.y+35+i*15,10,ev.kind==='warn'?p.hot:i%3===0?p.main:p.muted)
+  });
+ });
+ const px=x+15,py=y+247;
+ fill(px,py,w-30,27,p.bg);stroke(px,py,w-30,27,state.typedFocus?p.main:p.line);
+ txt('>_',px+9,py+18,11,p.main,'bold');
+ let display=state.typed;
+ const avail=42;if(display.length>avail)display=display.slice(-avail);
+ txt(display,px+32,py+18,11,p.ink);
+ if(state.typedFocus&&Math.sin(state.t*.012)>0)fill(px+34+ctx.measureText(display).width,py+7,7,13,p.main);
+ hit('terminal',px,py,w-30,27,()=>{state.typedFocus=true;canvas.focus()});
+}
+function floor(){const p=C();
+ fill(30,873,1540,62,p.surface);stroke(30,873,1540,62,p.line);
+ fill(30,873,7,62,p.hot);
+ txt('DNA',53,897,13,p.main,'bold');txt('MULTI-AGENT RECORDER',105,897,11,p.ink,'bold');
+ txt(state.jam?'!! TRANSPORT FAULT / VERIFY ARTIFACTS':state.run?'● ACTIVE CAPTURE / SCHEDULER IN MOTION':'○ PAUSED / NO NEW TASK EVENTS',53,920,11,state.jam?p.hot:p.second);
+ line(471,886,471,922,p.line);
+ txt('LATEST EVENT',491,894,10,p.muted);
+ const msg=state.events.length?state.events[0].msg:'NO EVENTS';
+ txt(msg.slice(0,47),491,914,12,p.ink);
+ line(993,886,993,922,p.line);
+ txt('SIM CLOCK',1012,894,10,p.muted);
+ txt(`${String(Math.floor(state.simClock/60)).padStart(2,'0')}:${String(Math.floor(state.simClock%60)).padStart(2,'0')}`,1012,920,18,p.main,'bold');
+ txt('RUN  [SPACE]   STEP  [S]   FAULT  [F]   REPAIR  [R]',1134,901,10,p.muted);
+ txt('JOBS / PHASES ARE CLICKABLE   •   [ESC] CLOSE DETAILS',1134,920,10,p.muted);
+}
+function trail(){const p=C();const m=state.mouse;if(m.x<0)return;
+ ctx.save();ctx.globalAlpha=.62;
+ line(m.x-9,m.y,m.x-3,m.y,p.main);line(m.x+3,m.y,m.x+9,m.y,p.main);
+ line(m.x,m.y-9,m.x,m.y-3,p.main);line(m.x,m.y+3,m.x,m.y+9,p.main);
+ ctx.restore()
+}
+function modalRender(){const p=C();const v=state.modalOpen;if(v<.02)return;
+ ctx.save();ctx.globalAlpha=v;fill(0,0,VW,VH,'rgba(0,0,0,.86)');
+ // Industrial shutter edges, not a frosted glass card.
+ const bx=340,by=170,bw=920,bh=620;
+ fill(bx,by,bw,bh,p.surface);stroke(bx,by,bw,bh,p.main,0,2);
+ fill(bx,by,17,bh,p.main);
+ for(let i=0;i<14;i++)fill(bx+17+i*14,by+8,6,6,p.line);
+ txt('DNA / INSPECTION SHEET',bx+45,by+52,27,p.ink,'bold','left','sans-serif');
+ txt(state.modal?.type==='stage'?'PROCESS CONTRACT / EVIDENCE':'RUN RECORD / AUDIT TRAIL',bx+45,by+79,13,p.main,'bold');
+ const item=state.modal?(state.modal.type==='stage'?stages[state.modal.index]:jobs[state.modal.index||0]):null;
+ if(item){
+  txt(item.title||item.id,bx+45,by+138,37,p.main,'bold','left','sans-serif');
+  txt(item.detail||item.name,bx+45,by+176,16,p.ink);
+  line(bx+45,by+208,bx+bw-45,by+208,p.line);
+  txt('OPERATION CHECKLIST',bx+45,by+245,14,p.second,'bold');
+  const tasks=state.modal.type==='stage'?item.checks:['Task registered','Worker assigned','Artifacts materialized','Acceptance verified'];
+  tasks.forEach((task,i)=>{
+   const done=state.modal.type==='stage'?i<2:(item.check[i]===1);
+   let ry=by+272+i*55;
+   fill(bx+45,ry,35,35,done?p.second:p.low);
+   txt(done?'✓':'—',bx+62,ry+25,22,done?p.bg:p.muted,'bold','center');
+   txt(task,bx+100,ry+24,17,done?p.ink:p.muted);
+  });
+  txt(state.modal.type==='stage'?'EVENT CONTRACT ID / '+String(state.modal.index+1).padStart(2,'0'):'PROGRESS '+Math.round(item.progress)+'% / '+number(item.tokens)+' TOKENS',bx+45,by+542,13,p.main);
+ }
+ button('CLOSE [ESC]',bx+bw-185,by+547,140,45,()=>closeModal(),true);
+ ctx.restore();
+}
+function showModal(type,index){state.modal={type,index};state.selectedStage=index;state.modalOpen=.001;state.typedFocus=false}
+function closeModal(){state.modal=null}
+function pushEvent(msg,kind='info'){
+ state.events.unshift({msg,kind,time:state.simClock});if(state.events.length>70)state.events.length=70;
+}
+function tokenPrint(amount){
+ state.tokenTotal+=amount;current().tokens+=amount;state.recentBurn=amount;
+ for(let i=0;i<Math.min(95,Math.max(2,Math.round(Math.sqrt(amount)*1.7)));i++){
+   state.flakes.push({x:740+Math.random()*140,y:786,dy:1+Math.random()*2,life:50+Math.random()*70,a:Math.random()*.75+.1});
+ }
+}
+function stepEvent(){
+ if(state.jam)return pushEvent('BLOCKED / TRANSPORT RECOVERY REQUIRED','warn');
+ state.evtIndex++;
+ const j=current();
+ const amount=90+((state.evtIndex*137)%680);tokenPrint(amount);
+ state.processed=Math.min(100000,state.processed+((state.evtIndex*13)%110)+22);
+ state.throughput=54+(state.evtIndex*13)%83;
+ state.scan=(state.scan+.047+(state.evtIndex%3)*.017)%1;
+ if(j.progress<100){j.progress=Math.min(100,j.progress+(state.evtIndex%3===0?2:1));j.phase=Math.min(5,Math.floor(j.progress/18));if(j.progress>=100){j.status='DONE';j.phase=5;}}
+ const events=['WORKER ACK / SHARD RETURNED','TOKEN LEDGER / CHARGED','CODE PATCH / STAGED','VERIFIER / CONTRACT MATCH','MEMORY WRITE / CHECKPOINT','SCHEDULER / CALLBACK WAKE','TOOL PERMIT / CONFIRMED'];
+ pushEvent(j.id+' / '+events[state.evtIndex%events.length]);
+}
+function addJob(){idCounter++;if(jobs.length>=8)jobs.splice(0,1);jobs.push({id:'RUN-'+String(idCounter).padStart(3,'0'),name:['Build semantic test fixtures','Assemble pipeline contracts','Repair agent route table','Inspect output artifacts'][idCounter%4],phase:0,progress:0,tokens:0,tests:'00/10',status:'QUEUED',check:[1,0,0,0]});state.selected=jobs.length-1;pushEvent('OPERATOR / NEW RUN INSERTED '+current().id)}
+function toggle(){state.run=!state.run;pushEvent(state.run?'TRANSPORT / ENGAGED':'TRANSPORT / HELD')}
+function fault(){state.jam=true;state.run=false;pushEvent('!!! FAULT / READ HEAD OBSTRUCTED','warn')}
+function recover(){state.jam=false;state.run=true;pushEvent('RECOVERY / READ HEAD RECALIBRATED')}
+function cycleTheme(){themeIndex=(themeIndex+1)%palettes.length;pushEvent('OPERATOR / PHOSPHOR PROFILE '+C().name)}
+function command(raw){const [c,...rest]=raw.trim().toLowerCase().split(/\s+/);if(!c)return;pushEvent('> '+raw);
+ switch(c){case 'help':pushEvent('COMMANDS / run hold step job fault repair skin inspect');break;
+ case 'run':state.run=true;break;case 'hold':state.run=false;break;
+ case 'step':stepEvent();break;case 'job':addJob();break;
+ case 'fault':fault();break;case 'repair':recover();break;
+ case 'skin':cycleTheme();break;case 'inspect':showModal('job',state.selected);break;
+ case 'status':pushEvent(`${current().id} / ${current().status} / ${Math.round(current().progress)}%`);break;
+ default:pushEvent('UNKNOWN OPERATOR COMMAND / TYPE HELP','warn');
+ }}
+function eventsUpdate(dt){
+ if(state.run&&!state.jam){state.simClock+=dt;state.rotation+=dt*(state.throughput/55);state.tapePhase+=dt*state.throughput*.55;state.scan=(state.scan+dt*.11)%1;state.lastEvent+=dt;
+  if(state.lastEvent>1.30){state.lastEvent=0;stepEvent()}
+ }
+ state.flakes=state.flakes.filter(f=>{f.y+=f.dy;f.x+=Math.sin(state.t*.001+f.y*.07)*.2;f.life-=1;return f.life>0&&f.y<880});
+ state.modalOpen+=((state.modal?1:0)-state.modalOpen)*Math.min(1,dt*10);
+ if(state.modal&&!state.modalOpen)state.modalOpen=.001;
+}
+function viewport(){dpr=Math.min(2,devicePixelRatio||1);canvas.width=Math.round(innerWidth*dpr);canvas.height=Math.round(innerHeight*dpr);
+ scale=Math.min(innerWidth/VW,innerHeight/VH);offsetX=(innerWidth-VW*scale)/2;offsetY=(innerHeight-VH*scale)/2;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function toWorld(e){return{x:(e.clientX-offsetX)/scale,y:(e.clientY-offsetY)/scale}}
+canvas.addEventListener('pointermove',e=>{state.mouse=toWorld(e);const h=[...slots].reverse().find(a=>state.mouse.x>=a.x&&state.mouse.x<=a.x+a.w&&state.mouse.y>=a.y&&state.mouse.y<=a.y+a.h);state.hover=h?h.id:null;canvas.style.cursor=h?'pointer':'crosshair'});
+canvas.addEventListener('pointerleave',()=>{state.mouse={x:-40,y:-40}});
+canvas.addEventListener('pointerdown',e=>{const m=toWorld(e);canvas.focus();if(state.modal){let close=slots.slice().reverse().find(a=>a.id==='btn:CLOSE [ESC]'&&m.x>=a.x&&m.x<a.x+a.w&&m.y>=a.y&&m.y<a.y+a.h);if(close)close.fn();else if(m.x<340||m.x>1260||m.y<170||m.y>790)closeModal();return;}
+ const h=[...slots].reverse().find(a=>m.x>=a.x&&m.x<=a.x+a.w&&m.y>=a.y&&m.y<=a.y+a.h);if(h)h.fn();else state.typedFocus=false;
+});
+window.addEventListener('keydown',e=>{
+ if(['Space','ArrowUp','ArrowDown'].includes(e.code)&&document.activeElement===canvas)e.preventDefault();
+ if(e.key==='Escape'){closeModal();state.typedFocus=false;return}
+ if(state.modal)return;
+ if(state.typedFocus){if(e.key==='Enter'){command(state.typed);state.typed=''}else if(e.key==='Backspace')state.typed=state.typed.slice(0,-1);else if(e.key.length===1&&state.typed.length<120&&!e.ctrlKey&&!e.metaKey)state.typed+=e.key;return}
+ if(e.code==='Space')toggle();else if(e.key.toLowerCase()==='s')stepEvent();else if(e.key.toLowerCase()==='f')fault();else if(e.key.toLowerCase()==='r')recover();else if(e.key.toLowerCase()==='n')addJob();else if(e.key==='`')state.typedFocus=true;
+});
+window.addEventListener('resize',viewport);
+function draw(t){const dt=Math.min(.06,(t-last)/1000);last=t;state.t=t;eventsUpdate(dt);
+ ctx.setTransform(dpr,0,0,dpr,0,0);fill(0,0,innerWidth,innerHeight,C().bg);
+ ctx.translate(offsetX,offsetY);ctx.scale(scale,scale);
+ slots.length=0;back();header();library();machine();stagesPanel();bottomDeck();teletype();floor();
+ // Additional material coming off the token press as receipt chips.
+ state.flakes.forEach(f=>{ctx.globalAlpha=Math.min(.8,f.life/45)*f.a;fill(f.x,f.y,2+f.a*3,5,C().hot)});ctx.globalAlpha=1;
+ trail();modalRender();requestAnimationFrame(draw)
+}
+viewport();
+['BOOT / TAPE DECK SPIN-UP COMPLETE','SCHEDULER / EVENT CALLBACKS ARMED','VERIFY / ACCEPTANCE CONTACT SHEET READY','MEMORY / CHECKPOINT CHANNEL ONLINE'].forEach(msg=>pushEvent(msg));
+requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

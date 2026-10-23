@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNA // Night Terminal X</title>
+<style>
+  :root {
+    --bg: #020304;
+    --fg: #d8fff1;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: var(--fg);
+    font-family: Inter, system-ui, sans-serif;
+  }
+  #ui {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #000;
+    cursor: crosshair;
+  }
+  .controls {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 30;
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    appearance: none;
+    border: 1px solid rgba(100,255,220,.22);
+    background: #05090b;
+    color: #dcfff8;
+    border-radius: 0;
+    padding: 8px 12px;
+    font: 700 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .09em;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  .btn:hover { background: #071014; }
+  .modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 40;
+    background: rgba(0,0,0,.86);
+    backdrop-filter: none;
+  }
+  .modal.show { display: block; }
+  .modal-inner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(880px, calc(100vw - 28px));
+    max-height: 84vh;
+    overflow: auto;
+    background: #040607;
+    border: 2px solid #29f9d5;
+    padding: 18px;
+    box-shadow: 0 0 0 1px #000, 0 0 22px rgba(41,249,213,.18);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .modal h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #e8fff9;
+  }
+  .modal p { color: #b6d9d1; line-height: 1.55; font-size: 13px; }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .meta {
+    border: 1px solid rgba(100,255,220,.18);
+    padding: 10px;
+    background: #020405;
+  }
+  .meta b {
+    display: block;
+    margin-bottom: 6px;
+    color: #6fffe7;
+    font-size: 11px;
+    letter-spacing: .09em;
+  }
+  .meta span { color: #e4fff6; font-size: 12px; }
+  .list { list-style: none; padding: 0; margin: 12px 0 0; }
+  .list li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(100,255,220,.12);
+    color: #d2f4ea;
+    font-size: 12px;
+  }
+  .list li::before { content: '> '; color: #ff57c8; }
+  .close {
+    appearance: none;
+    border: 1px solid rgba(255,87,200,.26);
+    background: #080406;
+    color: #fff;
+    padding: 8px 12px;
+    float: right;
+    font: 700 11px ui-monospace, monospace;
+    letter-spacing: .09em;
+    cursor: pointer;
+  }
+  @media (max-width: 720px) {
+    .meta-grid { grid-template-columns: 1fr; }
+    .controls { top: auto; bottom: 10px; right: 10px; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<canvas id="ui"></canvas>
+<div class="controls">
+  <button class="btn" id="themeBtn">Theme</button>
+  <button class="btn" id="burstBtn">Burst</button>
+  <button class="btn" id="pauseBtn">Pause</button>
+</div>
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <button class="close" id="closeBtn">Close</button>
+    <h2 id="modalTitle">Panel</h2>
+    <p id="modalText"></p>
+    <div class="meta-grid" id="modalGrid"></div>
+    <ul class="list" id="modalList"></ul>
+  </div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('ui');
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalGrid = document.getElementById('modalGrid');
+  const modalList = document.getElementById('modalList');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  const themes = [
+    { name: 'CYBER TEAL', bg: '#000000', fg: '#dffdf7', dim: '#7ab8aa', line: '#63ffd8', alt: '#ff57c8', warn: '#ffd36f', soft: '#10241f' },
+    { name: 'MAGENTA GRID', bg: '#000000', fg: '#fde7fa', dim: '#c297bb', line: '#6fd8ff', alt: '#ff4ecf', warn: '#ffe98c', soft: '#1d1120' },
+    { name: 'AMBER DOS', bg: '#000000', fg: '#fff1d2', dim: '#b59f78', line: '#ffbd58', alt: '#7affde', warn: '#ff6c52', soft: '#23180f' },
+    { name: 'PHOSPHOR', bg: '#000000', fg: '#e9ffd8', dim: '#90b17f', line: '#9dff67', alt: '#6fe8ff', warn: '#ffdb74', soft: '#0f170d' }
+  ];
+
+  const info = {
+    header: { title: 'Command Header', text: 'Dense top command strip for overall runtime posture. It exposes the theme, queue, shards, token reserve, acceptance rate, and a moving tape so the system never feels asleep.', grid: [['Role','global status'],['Density','high'],['Mode','live sim'],['Visual','hard-edged terminal']], list: ['The moving tape is intentionally terminal-like, not glassy.', 'Micro slots are useful for real DNA metrics later.'] },
+    workflow: { title: 'Workflow Spine', text: 'The main DNA process chain. Traffic packets move across stages, and the current step lights harder than the rest.', grid: [['Stages','intake → plan → code → verify → memory → ship'],['Current','verify'],['Packets','animated'],['Use','human overview']], list: ['Designed as the big orchestration strip.', 'Could later open per-stage checklists and subplans.'] },
+    dna: { title: 'DNA Core', text: 'Animated DNA helix panel brought back into the terminal theme. It is framed as the symbolic “core” of the runtime rather than a decorative floating crystal.', grid: [['Object','double helix'],['Motion','continuous'],['Bands','dual'],['Role','hero telemetry']], list: ['You asked to bring back the DNA because it looked good.', 'This one is integrated into a darker, terminal-heavy theme.'] },
+    terminal: { title: 'Terminal Stream', text: 'Raw operational feed. It keeps the whole board grounded in a command-center feeling rather than turning into pure charts.', grid: [['Feed','live'],['Rows','18'],['Commands','simulated'],['Noise','intentional']], list: ['Scrolling and blinking cursor keep this panel active.', 'Designed to feel like a retro operator console.'] },
+    topology: { title: 'Agent Topology', text: 'Planner, coder, verifier, memory, watcher, and shards linked in a dense graph. Motion is subtle; the goal is signal, not chaos.', grid: [['Nodes','20'],['Links','adaptive'],['Traffic','pulsed'],['Purpose','relation view']], list: ['A cyberpunk deck needs a topology map.', 'Links flare when message activity passes through.'] },
+    pulse: { title: 'Signal Bus', text: 'Central pulse and waveform monitor. It includes a sharp bus line and secondary traces to make the screen feel alive.', grid: [['Status','alive'],['Waveforms','3'],['Burst reaction','yes'],['Semantic','health bus']], list: ['Unlike the earlier bad heartbeat, this is a proper trace line.', 'Burst mode intensifies spikes.'] },
+    tokens: { title: 'Token Reservoir', text: 'Resource pressure panel. Token depletion and recovery are treated like reservoir levels and drain bars.', grid: [['Reserve', () => Math.round(state.metrics.tokens)],['Drain','variable'],['Burst sensitivity','high'],['Meaning','resource monitor']], list: ['Useful for linking particle effects to spending later.', 'Bars move independently for a live feel.'] },
+    verify: { title: 'Verifier Rack', text: 'Acceptance, schema, runtime, and golden-check mini meters. This is where deterministic DNA verification belongs.', grid: [['Acceptance', () => Math.round(state.metrics.verify*100)+'%'],['Checks','14 / 15'],['Signal','strong'],['Bias','deterministic']], list: ['Built to echo lab instrumentation.', 'Good place for future real test counters.'] },
+    queue: { title: 'Queue vs Latency', text: 'Dual history scope for queue pressure and latency. It helps separate workload growth from actual slowdowns.', grid: [['Queue', () => Math.round(state.metrics.queue)],['Latency', () => Math.round(state.metrics.latency)+' ms'],['Window','64 ticks'],['Visual','dual traces']], list: ['Two line traces prevent a single overloaded chart.', 'Could later be wired to real task metrics.'] },
+    memory: { title: 'CTX / MEM / IO Table', text: 'A dense metrics table — one of the DNA-ish things you liked in earlier designs.', grid: [['CTX', () => Math.round(state.metrics.ctx)+'k'],['MEM', () => Math.round(state.metrics.mem)+'%'],['I/O', () => Math.round(state.metrics.io)+'%'],['Retention','88%']], list: ['Dense table cells feel very terminal-like.', 'Useful as a compact factual panel.'] },
+    heat: { title: 'Permit Heat', text: 'Heat tile matrix for pressure hotspots and permit activity. Gives a different information grammar from lines and text.', grid: [['Grid','8 × 16'],['Heat','moderate'],['Decay','slow'],['Use','pressure overview']], list: ['A classic monitor-wall filler that is still meaningful.', 'Can later represent memory permits or locks.'] },
+    radar: { title: 'Worker Radar', text: 'Retro sweep panel for workers and anomalies. Kept because it reads well and suits the cyberpunk monitor-wall mood.', grid: [['Workers', () => Math.round(state.metrics.workers)],['Anomalies', () => Math.round(state.metrics.alerts)],['Sweep','continuous'],['Shape','circular']], list: ['Fast to read at a glance.', 'Blips pulse on sweep contact.'] },
+    spectrum: { title: 'Telemetry Spectrum', text: 'Ambient band analyzers for monitor activity, route noise, and energy. These are here to increase motion density without hiding meaning.', grid: [['Bands','28'],['Peak hold','soft'],['Motion','independent'],['Role','ambient telemetry']], list: ['Good for giving the screen “life”.', 'One of the easiest panels to wire to real stats later.'] },
+    workers: { title: 'Worker Matrix', text: 'Orbital worker activity sketch. It implies planners, coders, verifiers, and watchers moving through a shared control field.', grid: [['Workers', () => Math.round(state.metrics.workers)],['Rings','2'],['Motion','continuous'],['Purpose','ambient activity']], list: ['A different motion style from the topology panel.', 'Helps the deck feel busy.'] },
+    tasks: { title: 'Shard Checklist', text: 'Current-stage checklist panel. Small but important because DNA needs task visibility, not just pretty visuals.', grid: [['Stage','verify'],['Checklist','5 items'],['Completed','4'],['Escalation','none']], list: ['This panel exists because you asked for meaningful panels.', 'A good candidate for real JSON-driven state later.'] },
+    tape: { title: 'Action Tape', text: 'Micro action tape for small updates that don’t deserve a full panel. It behaves like a compact event lane.', grid: [['Direction','right to left'],['Priority','mixed'],['Density','compressed'],['Mood','terminal tape']], list: ['A moving tape makes the board feel operational.', 'Easy future home for event notifications.'] }
+  };
+
+  const state = {
+    w: 0, h: 0,
+    paused: false,
+    theme: 0,
+    burst: 0,
+    last: performance.now(),
+    layout: [],
+    hit: [],
+    mouse: { x: 0, y: 0, inside: false },
+    mouseTrail: [],
+    packetPhase: 0,
+    tapeX: 0,
+    commandX: 0,
+    queueHistory: Array.from({length: 64}, () => 180 + Math.random()*20),
+    latencyHistory: Array.from({length: 64}, () => 40 + Math.random()*7),
+    spectrum: Array.from({length: 28}, () => .15 + Math.random()*.78),
+    heat: Array.from({length: 8}, () => Array.from({length: 16}, () => Math.random())),
+    termLines: [],
+    particles: [],
+    graphNodes: Array.from({length: 20}, (_, i) => ({ x: .12+Math.random()*.76, y: .16+Math.random()*.68, vx: (Math.random()-.5)*.0018, vy: (Math.random()-.5)*.0018, seed: Math.random()*100, group: i%4 })),
+    workerDots: Array.from({length: 12}, (_, i) => ({ a: Math.random()*Math.PI*2, r: .2+Math.random()*.55, s: .0022+Math.random()*.0034, ring: i%2 })),
+    metrics: { load: .63, tokens: 4620, queue: 184, verify: .91, latency: 42, mem: 61, io: 74, workers: 12, alerts: 2, ctx: 183, shards: 7 }
+  };
+
+  function theme() { return themes[state.theme]; }
+  function rgba(hex, a) {
+    const h = hex.replace('#', '');
+    const n = parseInt(h, 16);
+    return `rgba(${(n>>16)&255}, ${(n>>8)&255}, ${n&255}, ${a})`;
+  }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function lerp(a,b,t){ return a + (b-a)*t; }
+  function rnd(a,b){ return a + Math.random()*(b-a); }
+  function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.lineTo(x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.lineTo(x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.lineTo(x,y+h-r); ctx.lineTo(x,y+r); ctx.closePath(); }
+  function drawText(txt,x,y,size=10,color=theme().fg,align='left',font='ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',weight='400'){
+    ctx.fillStyle = color;
+    ctx.font = `${weight} ${size}px ${font}`;
+    ctx.textAlign = align;
+    ctx.fillText(txt, x, y);
+  }
+
+  function seedTerminal() {
+    const seed = [
+      '> boot dna/night-terminal-x',
+      '> attach planner.shards = 7',
+      '> verifier.acceptance = 91%',
+      '> memory.retention = 88%',
+      '> queue.ingest = 184',
+      '> token.reserve = 4620',
+      '> watcher.state = nominal'
+    ];
+    state.termLines = seed.slice().reverse();
+  }
+
+  function pushLine(line) {
+    state.termLines.unshift(line);
+    if (state.termLines.length > 18) state.termLines.pop();
+  }
+
+  function buildLayout() {
+    const w = state.w, h = state.h;
+    const m = 14, g = 10, top = 62, bottom = 38;
+    const usableH = h - top - bottom - m;
+    const col1 = Math.max(230, w * .22);
+    const col2 = Math.max(350, w * .36);
+    const col3 = Math.max(170, w * .16);
+    const col4 = w - (m*2 + g*3 + col1 + col2 + col3);
+    const x1 = m, x2 = x1 + col1 + g, x3 = x2 + col2 + g, x4 = x3 + col3 + g;
+    const y = top;
+    const a = Math.max(120, usableH * .22);
+    const b = Math.max(165, usableH * .28);
+    const c = Math.max(120, usableH * .18);
+    const d = usableH - a - b - c - g*3;
+    const left2 = (d - g) / 2;
+    const mid2 = Math.max(105, usableH * .15);
+    const mid3 = usableH - a - b - mid2 - g*3;
+    const rightA = Math.max(110, usableH * .19);
+    const rightB = Math.max(120, usableH * .18);
+    const rightC = usableH - rightA - rightB - g*2;
+    const farA = Math.max(100, usableH * .17);
+    const farB = Math.max(100, usableH * .15);
+    const farC = Math.max(110, usableH * .19);
+    const farD = usableH - farA - farB - farC - g*3;
+
+    state.layout = [
+      { id:'header', x:m, y:10, w:w-m*2, h:42 },
+      { id:'terminal', x:x1, y:y, w:col1, h:a },
+      { id:'topology', x:x1, y:y+a+g, w:col1, h:b },
+      { id:'radar', x:x1, y:y+a+b+g*2, w:col1, h:c },
+      { id:'spectrum', x:x1, y:y+a+b+c+g*3, w:col1, h:left2 },
+      { id:'tape', x:x1, y:y+a+b+c+left2+g*4, w:col1, h:left2 },
+      { id:'workflow', x:x2, y:y, w:col2, h:a },
+      { id:'dna', x:x2, y:y+a+g, w:col2, h:b },
+      { id:'pulse', x:x2, y:y+a+b+g*2, w:col2, h:mid2 },
+      { id:'tasks', x:x2, y:y+a+b+mid2+g*3, w:col2, h:mid3 },
+      { id:'tokens', x:x3, y:y, w:col3, h:rightA },
+      { id:'verify', x:x3, y:y+rightA+g, w:col3, h:rightB },
+      { id:'queue', x:x3, y:y+rightA+rightB+g*2, w:col3, h:rightC },
+      { id:'memory', x:x4, y:y, w:col4, h:farA },
+      { id:'workers', x:x4, y:y+farA+g, w:col4, h:farB },
+      { id:'heat', x:x4, y:y+farA+farB+g*2, w:col4, h:farC },
+      { id:'alerts', x:x4, y:y+farA+farB+farC+g*3, w:col4, h:farD },
+      { id:'ticker', x:m, y:h-bottom, w:w-m*2, h:24 }
+    ];
+  }
+
+  function panelBody(p, accent, alt) {
+    // hard-edged retro frame
+    ctx.fillStyle = '#010304';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    // subtle raster field
+    ctx.fillStyle = rgba(theme().soft, .15);
+    for (let i = 0; i < p.h; i += 4) ctx.fillRect(p.x, p.y+i, p.w, 1);
+    // grid
+    ctx.strokeStyle = rgba(accent, .08);
+    ctx.lineWidth = 1;
+    for (let xx = p.x+10; xx < p.x+p.w; xx += 24) { ctx.beginPath(); ctx.moveTo(xx, p.y+22); ctx.lineTo(xx, p.y+p.h); ctx.stroke(); }
+    for (let yy = p.y+22; yy < p.y+p.h; yy += 18) { ctx.beginPath(); ctx.moveTo(p.x, yy); ctx.lineTo(p.x+p.w, yy); ctx.stroke(); }
+    // frame
+    ctx.strokeStyle = rgba(accent, .55);
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(p.x+.5, p.y+.5, p.w-1, p.h-1);
+    ctx.strokeStyle = rgba(alt, .14);
+    ctx.strokeRect(p.x+3.5, p.y+3.5, p.w-7, p.h-7);
+    // corners
+    ctx.strokeStyle = rgba(theme().fg, .9);
+    ctx.lineWidth = 1.2;
+    const c = 12;
+    [[p.x+2,p.y+2,1,1],[p.x+p.w-2,p.y+2,-1,1],[p.x+2,p.y+p.h-2,1,-1],[p.x+p.w-2,p.y+p.h-2,-1,-1]].forEach(([x,y,sx,sy]) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y+sy*c); ctx.lineTo(x, y); ctx.lineTo(x+sx*c, y);
+      ctx.stroke();
+    });
+  }
+
+  function panelHeader(p, title, tag, accent) {
+    ctx.fillStyle = '#050708';
+    ctx.fillRect(p.x, p.y, p.w, 22);
+    ctx.strokeStyle = rgba(accent, .45);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y+22.5); ctx.lineTo(p.x+p.w, p.y+22.5); ctx.stroke();
+    drawText(title, p.x+10, p.y+15, 11, theme().fg, 'left', 'ui-monospace, monospace', '700');
+    drawText(tag, p.x+p.w-10, p.y+15, 9, rgba(accent, .95), 'right', 'ui-monospace, monospace', '700');
+  }
+
+  function clipPanel(p) {
+    ctx.beginPath();
+    ctx.rect(p.x+1, p.y+23, p.w-2, p.h-24);
+    ctx.clip();
+  }
+
+  function spawnParticle(mult=1) {
+    const live = state.layout.filter(p => ['workflow','dna','pulse','tokens','workers'].includes(p.id));
+    const src = live[(Math.random()*live.length)|0];
+    if (!src) return;
+    state.particles.push({
+      x: src.x + rnd(18, src.w-18),
+      y: src.y + rnd(30, src.h-12),
+      vx: rnd(-.45,.45)*mult,
+      vy: rnd(-.18,.18)*mult,
+      life: rnd(24,58),
+      max: rnd(24,58),
+      color: Math.random() > .66 ? 'alt' : (Math.random() > .5 ? 'line' : 'warn')
+    });
+  }
+
+  function update(dt, now) {
+    if (state.paused) return;
+    const m = state.metrics;
+    state.burst = Math.max(0, state.burst - dt * .8);
+    state.packetPhase += dt * (1.1 + state.burst*2.8);
+    state.tapeX -= (85 + state.burst*120) * dt;
+    state.commandX -= 64 * dt;
+    m.load = clamp(m.load + rnd(-.012,.012) + (.63-m.load)*.04, .18, .96);
+    m.tokens = clamp(m.tokens + rnd(-40,48) - state.burst*30, 320, 12000);
+    m.queue = clamp(m.queue + rnd(-3,3) + (184-m.queue)*.035 + state.burst*5, 18, 420);
+    m.verify = clamp(m.verify + rnd(-.008,.008) + (.91-m.verify)*.045, .3, .99);
+    m.latency = clamp(m.latency + rnd(-1.1,1.1) + (42-m.latency)*.04 + state.burst*3, 10, 140);
+    m.mem = clamp(m.mem + rnd(-1.2,1.2) + (61-m.mem)*.04, 10, 96);
+    m.io = clamp(m.io + rnd(-1.5,1.5) + (74-m.io)*.04 + state.burst*4, 10, 99);
+    m.ctx = clamp(m.ctx + rnd(-1.2,1.2) + (183-m.ctx)*.04, 20, 400);
+    m.alerts = clamp(Math.round(m.alerts + (Math.random()>.985?1:0) - (Math.random()>.992?1:0)), 0, 9);
+    state.queueHistory.push(m.queue); if (state.queueHistory.length > 64) state.queueHistory.shift();
+    state.latencyHistory.push(m.latency); if (state.latencyHistory.length > 64) state.latencyHistory.shift();
+    state.spectrum = state.spectrum.map((v,i) => clamp(v + rnd(-.12,.12) + (((Math.sin(now*.0013+i*.38)+1)/2)-v)*.09, .04, 1));
+    state.heat = state.heat.map((row,ri) => row.map((v,ci) => clamp(v + rnd(-.05,.05) + (((Math.sin(now*.0011+ri*.7+ci*.31)+1)/2)-v)*.045, 0, 1)));
+    state.graphNodes.forEach(n => {
+      n.x = clamp(n.x + n.vx + rnd(-.001,.001), .08, .92);
+      n.y = clamp(n.y + n.vy + rnd(-.001,.001), .12, .88);
+      if (n.x <= .08 || n.x >= .92) n.vx *= -1;
+      if (n.y <= .12 || n.y >= .88) n.vy *= -1;
+    });
+    state.workerDots.forEach(d => d.a += d.s * (1+state.burst));
+    if (Math.random() > .94) spawnParticle(1+state.burst*2);
+    state.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 1; });
+    state.particles = state.particles.filter(p => p.life > 0);
+    if (state.mouse.inside && Math.random() > .55) {
+      state.mouseTrail.push({ x: state.mouse.x, y: state.mouse.y, life: 20, max: 20 });
+    }
+    state.mouseTrail.forEach(m => m.life -= 1);
+    state.mouseTrail = state.mouseTrail.filter(m => m.life > 0);
+    if (Math.random() > .975) {
+      const tags = ['planner','verifier','memory','watcher','router','coder'];
+      const verbs = ['seal','route','wake','trace','attach','cache','repair','dispatch'];
+      pushLine(`> ${tags[(Math.random()*tags.length)|0]}.${verbs[(Math.random()*verbs.length)|0]}() :: ${Math.random()>.82?'hold':'ok'}`);
+    }
+  }
+
+  function drawBackground(now) {
+    const th = theme();
+    ctx.fillStyle = th.bg;
+    ctx.fillRect(0,0,state.w,state.h);
+    // terminal rain columns
+    ctx.save();
+    ctx.globalAlpha = .075;
+    const chars = '01<>[]{}=+#:;';
+    for (let i = 0; i < state.w; i += 42) {
+      for (let j = 0; j < 20; j++) {
+        const y = ((now*.05 + i*1.3 + j*58) % (state.h+120)) - 60;
+        drawText(chars[(i+j)%chars.length], i + ((j*17)%18), y, 10, j%3===0?th.alt:th.line);
+      }
+    }
+    ctx.restore();
+    // subtle horizontal terminal streaks
+    for (let i=0;i<12;i++) {
+      const y = 70 + i*18;
+      const x = (now*.1 + i*160) % (state.w + 300) - 150;
+      ctx.fillStyle = rgba(i%2?th.alt:th.line, .08);
+      ctx.fillRect(x, y, 90 + ((i*43)%70), 1);
+    }
+  }
+
+  function drawHeader(p) {
+    panelBody(p, theme().line, theme().alt); panelHeader(p, 'DNA // NIGHT TERMINAL X', 'COMMAND DECK', theme().line);
+    const cells = [
+      ['THEME', theme().name], ['LOAD', Math.round(state.metrics.load*100)+'%'], ['TOKENS', Math.round(state.metrics.tokens)], ['QUEUE', Math.round(state.metrics.queue)],
+      ['VERIFY', Math.round(state.metrics.verify*100)+'%'], ['CTX', Math.round(state.metrics.ctx)+'k'], ['MEM', Math.round(state.metrics.mem)+'%'], ['I/O', Math.round(state.metrics.io)+'%']
+    ];
+    const startX = p.x + 210, y = p.y + 9, cellW = Math.max(84, (p.w - 360) / cells.length);
+    cells.forEach((c, i) => {
+      ctx.strokeStyle = rgba(i%3===0?theme().line:i%3===1?theme().alt:theme().warn, .28);
+      ctx.strokeRect(startX + i*cellW, y, cellW-6, 24);
+      drawText(c[0], startX + 8 + i*cellW, y+9, 8, theme().dim, 'left', 'ui-monospace, monospace', '700');
+      drawText(String(c[1]), startX + cellW - 14 + i*cellW - 6, y+18, 10, theme().fg, 'right', 'ui-monospace, monospace', '700');
+    });
+  }
+
+  function drawTerminalPanel(p) {
+    panelBody(p, theme().line, theme().alt); panelHeader(p, 'TERMINAL STREAM', 'RAW', theme().line);
+    ctx.save(); clipPanel(p);
+    state.termLines.forEach((line, i) => {
+      const y = p.y + 40 + i*13;
+      const color = i===0 ? theme().fg : (i%4===0 ? theme().warn : theme().dim);
+      drawText(line, p.x+12, y, 10, color);
+    });
+    const cursorY = p.y + 40;
+    const blink = Math.sin(performance.now()*.012) > 0 ? '_' : ' ';
+    drawText(blink, p.x+14 + (state.termLines[0]||'').length*6.2, cursorY, 10, theme().line);
+    ctx.restore();
+  }
+
+  function drawTopology(p) {
+    panelBody(p, theme().alt, theme().line); panelHeader(p, 'AGENT TOPOLOGY', 'SWARM', theme().alt);
+    ctx.save(); clipPanel(p);
+    const nodes = state.graphNodes.map(n => ({ x: p.x + n.x*p.w, y: p.y + 26 + n.y*(p.h-36), group: n.group }));
+    for (let i=0;i<nodes.length;i++) {
+      for (let j=i+1;j<nodes.length;j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const d = Math.hypot(dx, dy);
+        if (d < 92) {
+          ctx.strokeStyle = rgba((i+j)%3===0?theme().warn:(i%2?theme().alt:theme().line), .12*(1-d/92));
+          ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y); ctx.stroke();
+        }
+      }
+    }
+    nodes.forEach((n, i) => {
+      const color = n.group===0 ? theme().line : n.group===1 ? theme().alt : n.group===2 ? theme().warn : theme().fg;
+      ctx.fillStyle = rgba(color, .92);
+      ctx.beginPath(); ctx.arc(n.x, n.y, 2.3 + Math.sin(performance.now()*.004+i)*.7, 0, Math.PI*2); ctx.fill();
+    });
+    drawText('planner / coder / verifier / memory / watcher / shards', p.x+12, p.y+p.h-10, 9, theme().dim);
+    ctx.restore();
+  }
+
+  function drawRadar(p, now) {
+    panelBody(p, theme().warn, theme().line); panelHeader(p, 'WORKER RADAR', 'SWEEP', theme().warn);
+    ctx.save(); clipPanel(p);
+    const cx = p.x + p.w*.5, cy = p.y + p.h*.56, r = Math.min(p.w,p.h)*.29;
+    ctx.strokeStyle = rgba(theme().line, .15);
+    [1,2,3,4].forEach(k => { ctx.beginPath(); ctx.arc(cx, cy, r*k/4, 0, Math.PI*2); ctx.stroke(); });
+    ctx.beginPath(); ctx.moveTo(cx-r, cy); ctx.lineTo(cx+r, cy); ctx.moveTo(cx, cy-r); ctx.lineTo(cx, cy+r); ctx.stroke();
+    const a = (now*.0017)%(Math.PI*2);
+    ctx.fillStyle = rgba(theme().line, .08);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a-.25,a); ctx.closePath(); ctx.fill();
+    state.workerDots.forEach((d,i) => {
+      const rr = d.r * r;
+      const x = cx + Math.cos(d.a)*rr, y = cy + Math.sin(d.a)*rr;
+      const hit = Math.abs(((d.a%(Math.PI*2)) - a)) < .20;
+      ctx.fillStyle = rgba(hit?theme().warn:theme().alt, hit?.95:.55);
+      ctx.beginPath(); ctx.arc(x,y, hit?2.8:1.8, 0, Math.PI*2); ctx.fill();
+    });
+    drawText(`workers ${state.metrics.workers}`, p.x+12, p.y+p.h-12, 9, theme().fg);
+    drawText(`alerts ${state.metrics.alerts}`, p.x+p.w-12, p.y+p.h-12, 9, theme().warn, 'right');
+    ctx.restore();
+  }
+
+  function drawSpectrum(p) {
+    panelBody(p, theme().alt, theme().warn); panelHeader(p, 'TELEMETRY SPECTRUM', 'BANDS', theme().alt);
+    const bars = state.spectrum.length, gap = 3, bw = (p.w - 22 - gap*(bars-1)) / bars;
+    state.spectrum.forEach((v, i) => {
+      const h = (p.h - 42) * v;
+      const x = p.x + 11 + i*(bw+gap), y = p.y + p.h - 10 - h;
+      ctx.fillStyle = rgba(i%4===0?theme().warn:(i%2?theme().alt:theme().line), .78);
+      ctx.fillRect(x,y,bw,h);
+    });
+  }
+
+  function drawTapePanel(p) {
+    panelBody(p, theme().warn, theme().alt); panelHeader(p, 'ACTION TAPE', 'R2L', theme().warn);
+    const tape = ' planner.route stable • verifier delta low • token drain nominal • watcher awake • memory seal ok • ';
+    ctx.save(); clipPanel(p);
+    drawText(tape.repeat(10), p.x + p.w + (state.tapeX % 1100) - 900, p.y + 52, 11, theme().fg);
+    const msgs = ['route.attach', 'seal.batch', 'emit.trace', 'wake.worker', 'cache.delta', 'compress.mem'];
+    msgs.forEach((m, i) => drawText(`> ${m}`, p.x+12, p.y+26+i*13, 9, i<2?theme().warn:theme().dim));
+    ctx.restore();
+  }
+
+  function drawWorkflow(p) {
+    panelBody(p, theme().alt, theme().line); panelHeader(p, 'WORKFLOW SPINE', 'PROCESS', theme().alt);
+    ctx.save(); clipPanel(p);
+    const xs = [.10,.24,.39,.56,.73,.88].map(v => p.x + v*p.w);
+    const y = p.y + p.h*.62;
+    const labels = ['INTAKE','PLAN','CODE','VERIFY','MEMORY','SHIP'];
+    ctx.strokeStyle = rgba(theme().line, .15);
+    ctx.lineWidth = 2;
+    for (let i=0;i<xs.length-1;i++) {
+      ctx.beginPath(); ctx.moveTo(xs[i]+12, y); ctx.lineTo(xs[i+1]-12, y); ctx.stroke();
+      const progress = (state.packetPhase + i*.15) % 1;
+      const px = lerp(xs[i]+14, xs[i+1]-14, progress);
+      ctx.fillStyle = rgba(theme().warn, .95);
+      ctx.fillRect(px-2, y-2, 5, 5);
+    }
+    xs.forEach((x,i) => {
+      const active = i===3;
+      const c = active ? theme().warn : (i%2 ? theme().alt : theme().line);
+      ctx.strokeStyle = rgba(c, .9);
+      ctx.strokeRect(x-8, y-8, 16, 16);
+      ctx.fillStyle = rgba(c, active?.22:.10);
+      ctx.fillRect(x-8,y-8,16,16);
+      drawText(labels[i], x, y+28, 10, active?theme().fg:theme().dim, 'center');
+    });
+    ['shards','accept','routes','cache','locks'].forEach((lab,i) => {
+      const bx = p.x+18, by = p.y+38+i*15, bw = p.w-36;
+      const val = .24 + .72*((Math.sin(performance.now()*.0012+i*.8)+1)/2);
+      ctx.strokeStyle = rgba(theme().line, .16); ctx.strokeRect(bx,by,bw,6);
+      ctx.fillStyle = rgba(i%2?theme().line:theme().alt,.72); ctx.fillRect(bx+1,by+1,(bw-2)*val,4);
+      drawText(lab, bx, by-2, 8, theme().dim, 'left', 'ui-monospace, monospace', '700');
+    });
+    ctx.restore();
+  }
+
+  function drawDna(p, now) {
+    panelBody(p, theme().line, theme().alt); panelHeader(p, 'DNA CORE', 'HELIX', theme().line);
+    ctx.save(); clipPanel(p);
+    const left = p.x + 18, right = p.x + p.w - 18;
+    const top = p.y + 34, bottom = p.y + p.h - 18;
+    const midX = p.x + p.w*.5;
+    const rg = ctx.createRadialGradient(midX, p.y+p.h*.55, 8, midX, p.y+p.h*.55, Math.min(p.w,p.h)*.32);
+    rg.addColorStop(0, rgba(theme().warn, .18)); rg.addColorStop(.28, rgba(theme().line, .08)); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(p.x, p.y, p.w, p.h);
+    let prevA = null, prevB = null;
+    const ptsA = [], ptsB = [];
+    for (let i=0;i<88;i++) {
+      const u = i/87;
+      const y = lerp(top, bottom, u);
+      const ang = u*8.2*Math.PI + now*.0023;
+      const amp = Math.min(72, p.w*.18);
+      const xA = midX + Math.cos(ang)*amp;
+      const xB = midX + Math.cos(ang+Math.PI)*amp;
+      const zA = Math.sin(ang);
+      const zB = Math.sin(ang+Math.PI);
+      ptsA.push({x:xA, y, z:zA});
+      ptsB.push({x:xB, y, z:zB});
+    }
+    ptsA.forEach((pt, i) => {
+      const rA = 1.4 + (pt.z+1)*1.4;
+      const rB = 1.4 + (ptsB[i].z+1)*1.4;
+      if (prevA) {
+        ctx.strokeStyle = rgba(theme().line, .72); ctx.beginPath(); ctx.moveTo(prevA.x, prevA.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+        ctx.strokeStyle = rgba(theme().alt, .62); ctx.beginPath(); ctx.moveTo(prevB.x, prevB.y); ctx.lineTo(ptsB[i].x, ptsB[i].y); ctx.stroke();
+      }
+      if (i%3===0) {
+        ctx.fillStyle = rgba(theme().line, .95); ctx.beginPath(); ctx.arc(pt.x, pt.y, rA, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = rgba(theme().alt, .95); ctx.beginPath(); ctx.arc(ptsB[i].x, ptsB[i].y, rB, 0, Math.PI*2); ctx.fill();
+      }
+      if (i%4===0) {
+        ctx.strokeStyle = rgba(theme().warn, .28 + (pt.z+1)*.10);
+        ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(ptsB[i].x, ptsB[i].y); ctx.stroke();
+      }
+      prevA = pt; prevB = ptsB[i];
+    });
+    // side readings
+    for (let i=0;i<10;i++) {
+      drawText(`band ${i.toString().padStart(2,'0')} :: ${Math.round(42+Math.sin(now*.001+i)*21)}.${Math.round(Math.cos(now*.002+i)*10+10)}%`, p.x+14, p.y+42+i*14, 9, i<3?theme().fg:theme().dim);
+      drawText(`${(100+i*7).toString().padStart(3,'0')} khz`, p.x+p.w-14, p.y+42+i*14, 9, i%2?theme().line:theme().alt, 'right');
+    }
+    ctx.restore();
+  }
+
+  function drawPulse(p, now) {
+    panelBody(p, theme().line, theme().warn); panelHeader(p, 'SIGNAL BUS', 'WAVE', theme().line);
+    ctx.save(); clipPanel(p);
+    const left = p.x+10, right = p.x+p.w-10, mid = p.y+p.h*.56;
+    ctx.strokeStyle = rgba(theme().line, .95); ctx.lineWidth = 1.8; ctx.beginPath();
+    for (let x=left;x<=right;x++) {
+      const u = (x-left)/(right-left);
+      let y = mid + Math.sin(u*16 + now*.004)*6 + Math.cos(u*39 + now*.0018)*3;
+      const spike = Math.exp(-Math.pow((u - ((state.packetPhase*.18)%1))*36, 2));
+      y -= spike*(16 + state.burst*18);
+      if (x===left) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = rgba(theme().alt, .7); ctx.beginPath();
+    for (let x=left;x<=right;x++) {
+      const u = (x-left)/(right-left), y = mid-22 + Math.sin(u*12 + now*.0017)*8; if (x===left) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = rgba(theme().warn, .65); ctx.beginPath();
+    for (let x=left;x<=right;x++) {
+      const u = (x-left)/(right-left), y = mid+20 + Math.cos(u*13 + now*.0015)*7; if (x===left) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTasks(p) {
+    panelBody(p, theme().alt, theme().warn); panelHeader(p, 'SHARD CHECKLIST', 'VERIFY', theme().alt);
+    const steps = [['load spec',1],['run tests',1],['compare output',1],['repair delta',1],['seal batch', Math.sin(performance.now()*.0018)>0?0:1]];
+    steps.forEach((s,i) => {
+      const y = p.y+42+i*19;
+      ctx.strokeStyle = rgba(s[1]?theme().line:theme().warn, .75);
+      ctx.strokeRect(p.x+14,y-8,8,8);
+      if (s[1]) { ctx.fillStyle = rgba(theme().line,.82); ctx.fillRect(p.x+16,y-6,4,4); }
+      drawText(s[0], p.x+30, y, 10, s[1]?theme().fg:theme().warn);
+      if (i<steps.length-1) { ctx.strokeStyle = rgba(theme().dim,.35); ctx.beginPath(); ctx.moveTo(p.x+18,y+2); ctx.lineTo(p.x+18,y+12); ctx.stroke(); }
+    });
+    ['TEST','FIX','SEAL'].forEach((t, i) => {
+      const x = p.x + p.w*.58 + i*46, h = 20 + Math.sin(performance.now()*.002 + i)*17;
+      ctx.strokeStyle = rgba(i===2?theme().warn:theme().alt, .75); ctx.strokeRect(x, p.y+p.h-18-h, 22, h);
+      ctx.fillStyle = rgba(i===2?theme().warn:theme().line,.22); ctx.fillRect(x+1, p.y+p.h-17-h, 20, h-2);
+      drawText(t, x+11, p.y+p.h-6, 8, theme().dim, 'center');
+    });
+  }
+
+  function drawTokens(p) {
+    panelBody(p, theme().warn, theme().line); panelHeader(p, 'TOKEN RESERVOIR', 'RESOURCE', theme().warn);
+    const bars = 7, bw = (p.w-24)/bars;
+    for (let i=0;i<bars;i++) {
+      const val = .2 + .72*((Math.sin(performance.now()*.0018+i*.62)+1)/2);
+      const h = (p.h-54)*val;
+      const x = p.x+12+i*bw+3, y = p.y+p.h-12-h;
+      ctx.strokeStyle = rgba(i<2?theme().warn:(i%2?theme().alt:theme().line), .75);
+      ctx.strokeRect(x, p.y+34, bw-8, p.h-46);
+      ctx.fillStyle = rgba(i<2?theme().warn:(i%2?theme().alt:theme().line), .22);
+      ctx.fillRect(x+1, y+1, bw-10, h-2);
+    }
+    drawText(`reserve ${Math.round(state.metrics.tokens)}`, p.x+12, p.y+34, 10, theme().fg);
+    drawText(`drain ${Math.round(state.metrics.queue*1.7)}`, p.x+12, p.y+48, 9, theme().dim);
+  }
+
+  function drawVerify(p) {
+    panelBody(p, theme().line, theme().alt); panelHeader(p, 'VERIFIER RACK', 'CHECKS', theme().line);
+    ['acceptance','schema','runtime','goldens','stability'].forEach((lab, i) => {
+      const y = p.y+40+i*18;
+      const val = .28 + .68*((Math.sin(performance.now()*.0015+i*.74)+1)/2);
+      drawText(lab, p.x+12, y, 8, theme().dim);
+      ctx.strokeStyle = rgba(theme().line, .22); ctx.strokeRect(p.x+72, y-8, p.w-84, 8);
+      ctx.fillStyle = rgba(i===3?theme().warn:(i%2?theme().alt:theme().line), .72); ctx.fillRect(p.x+73, y-7, (p.w-86)*val, 6);
+    });
+  }
+
+  function drawQueuePanel(p) {
+    panelBody(p, theme().alt, theme().warn); panelHeader(p, 'QUEUE / LATENCY', 'SCOPE', theme().alt);
+    ctx.save(); clipPanel(p);
+    const x = p.x+10, y = p.y+32, w = p.w-20, h = p.h-42;
+    for (let i=0;i<=4;i++) { ctx.strokeStyle = rgba(theme().line,.08); ctx.beginPath(); ctx.moveTo(x, y+i*h/4); ctx.lineTo(x+w, y+i*h/4); ctx.stroke(); }
+    ctx.strokeStyle = rgba(theme().line,.92); ctx.lineWidth = 1.4; ctx.beginPath();
+    state.queueHistory.forEach((v,i)=>{ const xx=x+i*(w/(state.queueHistory.length-1)), yy=y+h-(v/420)*h; if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy); }); ctx.stroke();
+    ctx.strokeStyle = rgba(theme().warn,.82); ctx.beginPath();
+    state.latencyHistory.forEach((v,i)=>{ const xx=x+i*(w/(state.latencyHistory.length-1)), yy=y+h-(v/140)*h; if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy); }); ctx.stroke();
+    drawText(`q ${Math.round(state.metrics.queue)}`, x, y+h+10, 9, theme().line);
+    drawText(`l ${Math.round(state.metrics.latency)}ms`, x+46, y+h+10, 9, theme().warn);
+    ctx.restore();
+  }
+
+  function drawMemoryPanel(p) {
+    panelBody(p, theme().line, theme().warn); panelHeader(p, 'CTX / MEM / IO', 'TABLE', theme().line);
+    const rows = [['CTX', state.metrics.ctx+'k'], ['MEM', Math.round(state.metrics.mem)+'%'], ['I/O', Math.round(state.metrics.io)+'%'], ['RET','88%'], ['CACHE','73%'], ['LOCKS','02']];
+    rows.forEach((r,i)=>{
+      const y = p.y+38+i*15;
+      if (i%2===0) { ctx.fillStyle = 'rgba(255,255,255,.025)'; ctx.fillRect(p.x+10, y-10, p.w-20, 13); }
+      drawText(r[0], p.x+16, y, 9, theme().dim, 'left', 'ui-monospace, monospace', '700');
+      drawText(String(r[1]), p.x+p.w-16, y, 10, theme().fg, 'right', 'ui-monospace, monospace', '700');
+    });
+  }
+
+  function drawWorkers(p) {
+    panelBody(p, theme().line, theme().alt); panelHeader(p, 'WORKER MATRIX', 'ORBITS', theme().line);
+    const cx = p.x+p.w*.52, cy = p.y+p.h*.58, r1 = Math.min(p.w,p.h)*.18, r2 = r1*1.5;
+    ctx.strokeStyle = rgba(theme().line,.18); ctx.beginPath(); ctx.arc(cx,cy,r1,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(cx,cy,r2,0,Math.PI*2); ctx.stroke();
+    state.workerDots.forEach((d,i)=>{
+      const rr = d.ring ? r2 : r1; const x = cx + Math.cos(d.a)*rr, y = cy + Math.sin(d.a)*rr;
+      const c = i%3===0 ? theme().warn : (i%2 ? theme().alt : theme().line);
+      ctx.fillStyle = rgba(c,.95); ctx.beginPath(); ctx.arc(x,y,2.2,0,Math.PI*2); ctx.fill();
+      if (i<5) { ctx.strokeStyle = rgba(c,.15); ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.stroke(); }
+    });
+    drawText('planners / coders / verifiers / watchers', p.x+12, p.y+p.h-10, 9, theme().dim);
+  }
+
+  function drawHeat(p) {
+    panelBody(p, theme().warn, theme().alt); panelHeader(p, 'PERMIT HEAT', 'GRID', theme().warn);
+    const rows = state.heat.length, cols = state.heat[0].length, gap = 3;
+    const cw = (p.w-22-gap*(cols-1))/cols, ch = (p.h-34-gap*(rows-1))/rows;
+    state.heat.forEach((row,ri)=>row.forEach((v,ci)=>{
+      const x = p.x+11 + ci*(cw+gap), y = p.y+26 + ri*(ch+gap);
+      const c = v<.33 ? theme().line : v<.66 ? theme().alt : theme().warn;
+      ctx.fillStyle = rgba(c, .18 + .62*v);
+      ctx.fillRect(x,y,cw,ch);
+    }));
+  }
+
+  function drawAlerts(p) {
+    panelBody(p, theme().warn, theme().line); panelHeader(p, 'MICRO ALERTS', 'FLAGS', theme().warn);
+    const rows = ['watcher drift: none','queue soften: yes','verify hold: no','memory seal: ok','repair path: stable','token pressure: medium','summary write: active'];
+    rows.forEach((r,i) => drawText(`> ${r}`, p.x+12, p.y+38+i*13, 9, i<2?theme().fg:theme().dim));
+  }
+
+  function drawTicker(p) {
+    ctx.fillStyle = '#020405'; ctx.fillRect(p.x,p.y,p.w,p.h);
+    ctx.strokeStyle = rgba(theme().line,.45); ctx.strokeRect(p.x+.5,p.y+.5,p.w-1,p.h-1);
+    const tape = ' ACTION • planner.route stable • verifier repaired 1 delta • token reserve healthy • cache retention 88% • watcher awake • ';
+    drawText(tape.repeat(14), p.x + p.w + (state.commandX % 1700) - 1800, p.y+16, 11, theme().line, 'left', 'ui-monospace, monospace', '700');
+  }
+
+  function drawParticles() {
+    state.particles.forEach(p => {
+      const a = p.life / p.max;
+      const c = p.color==='alt' ? theme().alt : p.color==='warn' ? theme().warn : theme().line;
+      ctx.strokeStyle = rgba(c, .22*a);
+      ctx.beginPath(); ctx.moveTo(p.x-p.vx*10, p.y-p.vy*10); ctx.lineTo(p.x,p.y); ctx.stroke();
+      ctx.fillStyle = rgba(c, .9*a);
+      ctx.fillRect(p.x, p.y, 2 + a*2, 2 + a*2);
+    });
+  }
+
+  function drawMouseFx() {
+    if (!state.mouse.inside) return;
+    // trail
+    state.mouseTrail.forEach((m, i) => {
+      const a = m.life / m.max;
+      ctx.strokeStyle = rgba(i%2?theme().alt:theme().line, .3*a);
+      ctx.strokeRect(m.x-3, m.y-3, 6, 6);
+    });
+    // crosshair + scan brackets
+    ctx.strokeStyle = rgba(theme().line, .75);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(state.mouse.x-14, state.mouse.y); ctx.lineTo(state.mouse.x-4, state.mouse.y);
+    ctx.moveTo(state.mouse.x+4, state.mouse.y); ctx.lineTo(state.mouse.x+14, state.mouse.y);
+    ctx.moveTo(state.mouse.x, state.mouse.y-14); ctx.lineTo(state.mouse.x, state.mouse.y-4);
+    ctx.moveTo(state.mouse.x, state.mouse.y+4); ctx.lineTo(state.mouse.x, state.mouse.y+14);
+    ctx.stroke();
+    ctx.strokeStyle = rgba(theme().alt, .6);
+    ctx.strokeRect(state.mouse.x-18, state.mouse.y-18, 36, 36);
+    // coordinate readout
+    drawText(`${Math.round(state.mouse.x).toString().padStart(4,'0')} : ${Math.round(state.mouse.y).toString().padStart(4,'0')}`, state.mouse.x+24, state.mouse.y-8, 9, theme().fg);
+  }
+
+  function drawScanlines() {
+    ctx.fillStyle = 'rgba(255,255,255,.03)';
+    for (let y=0; y<state.h; y+=4) ctx.fillRect(0,y,state.w,1);
+    ctx.fillStyle = 'rgba(0,0,0,.12)';
+    for (let y=2; y<state.h; y+=8) ctx.fillRect(0,y,state.w,1);
+    const vg = ctx.createRadialGradient(state.w*.5,state.h*.5,Math.min(state.w,state.h)*.18,state.w*.5,state.h*.5,Math.max(state.w,state.h)*.74);
+    vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.46)');
+    ctx.fillStyle = vg; ctx.fillRect(0,0,state.w,state.h);
+  }
+
+  function openDetail(id) {
+    const meta = info[id];
+    if (!meta) return;
+    modalTitle.textContent = meta.title;
+    modalText.textContent = meta.text;
+    modalGrid.innerHTML = '';
+    meta.grid.forEach(([k,v]) => {
+      const div = document.createElement('div');
+      div.className = 'meta';
+      div.innerHTML = `<b>${k}</b><span>${typeof v === 'function' ? v() : v}</span>`;
+      modalGrid.appendChild(div);
+    });
+    modalList.innerHTML = '';
+    meta.list.forEach(item => {
+      const li = document.createElement('li'); li.textContent = item; modalList.appendChild(li);
+    });
+    modal.classList.add('show');
+  }
+
+  function render(now) {
+    const dt = Math.min(.05, (now - state.last) / 1000);
+    state.last = now;
+    update(dt, now);
+    drawBackground(now);
+    state.hit = [];
+    const map = {
+      header: drawHeader,
+      terminal: drawTerminalPanel,
+      topology: drawTopology,
+      radar: drawRadar,
+      spectrum: drawSpectrum,
+      tape: drawTapePanel,
+      workflow: drawWorkflow,
+      dna: drawDna,
+      pulse: drawPulse,
+      tasks: drawTasks,
+      tokens: drawTokens,
+      verify: drawVerify,
+      queue: drawQueuePanel,
+      memory: drawMemoryPanel,
+      workers: drawWorkers,
+      heat: drawHeat,
+      alerts: drawAlerts,
+      ticker: drawTicker
+    };
+    state.layout.forEach(p => {
+      map[p.id](p, now);
+      if (!['header','ticker'].includes(p.id)) state.hit.push(p);
+    });
+    drawParticles();
+    drawMouseFx();
+    drawScanlines();
+    requestAnimationFrame(render);
+  }
+
+  function resize() {
+    state.w = window.innerWidth;
+    state.h = window.innerHeight;
+    canvas.width = Math.round(state.w * dpr);
+    canvas.height = Math.round(state.h * dpr);
+    canvas.style.width = state.w + 'px';
+    canvas.style.height = state.h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildLayout();
+  }
+
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const panel = state.hit.find(p => x>=p.x && x<=p.x+p.w && y>=p.y && y<=p.y+p.h);
+    if (panel) openDetail(panel.id);
+  });
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    state.mouse.x = e.clientX - r.left; state.mouse.y = e.clientY - r.top; state.mouse.inside = true;
+  });
+  canvas.addEventListener('mouseleave', () => state.mouse.inside = false);
+  document.getElementById('themeBtn').onclick = () => { state.theme = (state.theme + 1) % themes.length; };
+  document.getElementById('burstBtn').onclick = () => { state.burst = 1.45; for (let i=0;i<18;i++) spawnParticle(1.9); pushLine('> burst.pulse() :: amplified'); };
+  pauseBtn.onclick = () => { state.paused = !state.paused; pauseBtn.textContent = state.paused ? 'Resume' : 'Pause'; };
+  document.getElementById('closeBtn').onclick = () => modal.classList.remove('show');
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') modal.classList.remove('show');
+    if (e.key === ' ') { e.preventDefault(); state.burst = 1.45; for (let i=0;i<18;i++) spawnParticle(1.9); }
+    if (e.key.toLowerCase() === 't') state.theme = (state.theme + 1) % themes.length;
+  });
+  window.addEventListener('resize', resize);
+
+  resize();
+  seedTerminal();
+  for (let i=0;i<20;i++) spawnParticle(1.2);
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

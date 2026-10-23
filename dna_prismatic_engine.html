@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNA // PRISM — WebGL2 Glass Engine</title>
+<style>
+:root{--cyan:#8af6f2;--ice:#e8fcff;--secondary:#82a0b4;--amber:#ffd09e;--red:#ff7997;--mint:#a4f5d2;--edge:rgba(210,250,255,.24);--glow:rgba(136,240,255,.08)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030913;color:var(--ice);font:12px/1.35 Inter,"Segoe UI",Arial,sans-serif}
+#gpu,#fallback{position:fixed;inset:0;width:100%;height:100%;display:block}#gpu{pointer-events:none}#fallback{display:none;pointer-events:none}
+#interface{position:fixed;inset:0;display:grid;grid-template-columns:minmax(228px,250px) minmax(500px,1fr) minmax(278px,302px);grid-template-rows:64px minmax(360px,1fr) 206px 26px;gap:10px;padding:12px;pointer-events:none}
+.pane{position:relative;min-height:0;min-width:0;border:1px solid rgba(205,248,255,.17);border-radius:22px;background:rgba(255,255,255,.008);pointer-events:auto;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 18px 60px rgba(0,0,0,.10)}
+.pane::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(132deg,rgba(255,255,255,.055),transparent 22%,transparent 74%,rgba(147,229,255,.025));opacity:.5}
+.header{grid-column:1/4;grid-row:1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 15px;border-radius:19px}
+.brand{display:flex;gap:12px;align-items:center;min-width:190px}.mark{width:29px;height:29px;border:1px solid #bdfcff;border-radius:11px;display:grid;place-items:center;color:#d7fcff;font-size:18px;box-shadow:0 0 16px #72dcf655,inset 0 0 12px #72dcf633;transform:rotate(-13deg)}
+.brand strong{font-size:14px;letter-spacing:.24em;font-weight:720}.brand small{display:block;color:var(--secondary);font:9px/1.6 ui-monospace,Consolas,monospace;letter-spacing:.13em;margin-top:2px}
+.pillbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.pill{font:10px ui-monospace,Consolas,monospace;border:1px solid rgba(194,248,255,.16);border-radius:30px;padding:7px 9px;background:#b9eeff06;color:#afcfde;white-space:nowrap}.pill strong{color:#e8fdff}
+.controls{display:flex;gap:6px;align-items:center}.btn{white-space:nowrap;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.025em;background:linear-gradient(180deg,#ddffff16,#ffffff04);color:#deffff;border:1px solid #c7faff3d;border-radius:11px;padding:9px 10px;cursor:pointer}.btn:hover,.btn:focus-visible{outline:none;border-color:#d5fffb;box-shadow:0 0 16px #82f5ff33}.btn.warning{color:var(--amber)}.btn.active{border-color:#b0fff4;color:white;background:#84fbdf22}
+#left{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;gap:10px;min-height:0}#right{grid-column:3;grid-row:2/4;display:flex;flex-direction:column;gap:10px;min-height:0}
+#hero{grid-column:2;grid-row:2;border-radius:30px;overflow:hidden}#below{grid-column:2;grid-row:3;display:grid;grid-template-columns:1.14fr 1fr .86fr;gap:10px;min-width:0;min-height:0}
+#footer{grid-column:1/4;grid-row:4;display:flex;align-items:center;justify-content:space-between;padding:2px 12px;font:9px ui-monospace,Consolas,monospace;letter-spacing:.14em;color:#8fbccc;border-radius:12px}
+.sectionHead{display:flex;align-items:center;justify-content:space-between;padding:14px 15px 8px;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.13em;color:#dffcff;text-transform:uppercase}.sub{font:9px ui-monospace,Consolas,monospace;color:#8cacb8;letter-spacing:.04em}.muted{color:#87a4b4}
+#agentPane{height:36%;min-height:210px}#ledgerPane{height:25%;min-height:145px}#eventsPane{flex:1;min-height:150px}#processPane{height:45%;min-height:270px}#todoPane{height:24%;min-height:145px}#terminalPane{flex:1;min-height:180px}
+.agentrow{display:grid;grid-template-columns:60px 1fr 33px;gap:8px;align-items:center;padding:6px 13px;font:10px ui-monospace,Consolas,monospace;cursor:pointer}.agentrow:hover{background:#aefcff0d}.meter{height:4px;border-radius:3px;background:#dfffff10;overflow:hidden}.meter i{display:block;height:100%;background:linear-gradient(90deg,#5adacc,#a8eeff);box-shadow:0 0 8px #89faf18a;border-radius:3px}.agentrow b{font-weight:600}.agentrow span{text-align:right;color:#9ac0ce}
+.metricGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 13px}.metricTile{border:1px solid #bfeeff15;border-radius:10px;padding:8px 9px;background:#d2ffff04}.metricTile small{display:block;color:#83a4b4;font:9px ui-monospace,Consolas,monospace}.metricTile strong{font:700 18px ui-monospace,Consolas,monospace;letter-spacing:-.05em}
+#eventRows{padding:2px 12px;max-height:calc(100% - 46px);overflow:auto}.event{display:grid;grid-template-columns:40px 1fr;gap:5px;font:9px/1.6 ui-monospace,Consolas,monospace;padding:4px 0;border-bottom:1px solid #c6efff0b}.event time{color:#779bac}.event span{color:#d1f4ff}.event em{color:var(--amber);font-style:normal}
+.heroHeading{position:absolute;top:17px;left:22px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}.heroHeading strong{font:700 12px ui-monospace,Consolas,monospace;letter-spacing:.18em}.heroHeading span{color:#9cc1ca;font:10px ui-monospace,Consolas,monospace;display:block;margin-top:5px}
+#lensHandle{position:absolute;width:210px;height:210px;border-radius:50%;cursor:grab;touch-action:none;pointer-events:auto;display:flex;align-items:flex-end;justify-content:center;padding-bottom:20px;user-select:none;left:55%;top:33%}#lensHandle:active{cursor:grabbing}#lensHandle::after{content:"DRAG OPTICAL LENS";color:#d5fdff;font:9px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-shadow:0 1px 10px #020813;pointer-events:none;opacity:.85}#lensHandle:hover::after{color:white}
+.heroFoot{position:absolute;left:22px;right:22px;bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}.heroLegend{font:10px/1.9 ui-monospace,Consolas,monospace;color:#a4c6d3}.heroLegend b{color:#f4ffff}.heroReadout{text-align:right;font:9px/1.75 ui-monospace,Consolas,monospace;color:#b0d6e0}
+.workflow{padding:5px 14px 0}.stage{display:grid;grid-template-columns:23px 1fr 48px;align-items:center;gap:7px;position:relative;padding:9px 8px;margin:2px 0;cursor:pointer;border:1px solid transparent;border-radius:10px;font:11px ui-monospace,Consolas,monospace;color:#bedce9}.stage:before{content:"";position:absolute;left:18px;top:-6px;height:6px;width:1px;background:#9bfff03b}.stage:first-child:before{display:none}.stage:hover,.stage.selected{border-color:#a2f8f84a;background:#8be8f70b}.stage b{font-weight:700;color:#d9faff}.stage .num{font-size:10px;color:#76b1bb}.stage .st{font-size:9px;text-align:right;color:var(--amber)}
+.tasklist{list-style:none;margin:0;padding:0 15px}.tasklist li{display:flex;align-items:flex-start;gap:9px;font:10px/1.5 ui-monospace,Consolas,monospace;padding:7px 0;border-bottom:1px solid #a3faff12}.tasklist input{accent-color:#78efce;margin:2px 0 0 0}.tasklist label{cursor:pointer;color:#e1f8ff}
+.termWrap{height:calc(100% - 38px);display:flex;flex-direction:column;padding:0 12px 10px}.termOutput{flex:1;min-height:0;overflow:auto;white-space:pre-wrap;font:10px/1.55 ui-monospace,Consolas,monospace;color:#a9d1db}.termEntry{display:flex;gap:8px;align-items:center;background:#daffff06;border:1px solid #cdfbff1c;border-radius:10px;padding:8px}.termEntry span{color:var(--amber);font:10px ui-monospace,Consolas,monospace}.termEntry input{width:100%;border:0;outline:none;background:none;color:#e9ffff;font:10px ui-monospace,Consolas,monospace}
+.miniPane{min-width:0;min-height:0}.miniBody{height:calc(100% - 37px);padding:4px 10px 9px;position:relative}#pulseCanvas,#radarCanvas{width:100%;height:100%;display:block;pointer-events:none}
+#tablePane table{width:100%;border-collapse:collapse;font:10px ui-monospace,Consolas,monospace;text-align:left}#tablePane th{color:#9ab9c6;letter-spacing:.15em}#tablePane td,#tablePane th{padding:5px 6px;border-bottom:1px solid #aaffff0f}#tablePane td{color:#cbe6ec}
+#marquee{white-space:nowrap;overflow:hidden;max-width:70%;color:#bcf2eb}
+.modal{position:fixed;inset:0;z-index:30;opacity:0;visibility:hidden;background:rgba(0,8,15,0);backdrop-filter:blur(0px);display:grid;place-items:center;transition:.3s;pointer-events:none}.modal.show{opacity:1;visibility:visible;pointer-events:auto;background:rgba(0,8,15,.66);backdrop-filter:blur(12px)}
+.dialog{width:min(720px,calc(100vw - 34px));max-height:83vh;overflow:auto;border-radius:27px;background:linear-gradient(160deg,rgba(17,34,47,.96),rgba(6,18,28,.96));border:1px solid #ccffff5a;box-shadow:0 0 100px #75e8ff19,0 30px 100px #0009;padding:23px;transform:translateY(14px) scale(.98);transition:transform .3s}.show .dialog{transform:none}.dialog header{display:flex;align-items:center;justify-content:space-between}.dialog h2{font-size:16px;letter-spacing:.11em;margin:0}.dialog p{color:#b2cad7;line-height:1.65}.dialog .detail{display:grid;grid-template-columns:1fr 1fr;gap:10px}.detailBox{padding:12px;border:1px solid #b5f6ff22;border-radius:14px;font:11px ui-monospace,Consolas,monospace;line-height:1.7}.detailBox b{display:block;color:var(--mint)}.detailBox span{color:#c4e2eb}.dialog .list{list-style:none;margin:16px 0;padding:0}.dialog .list li{padding:8px;border-bottom:1px solid #aeffff1a;font:11px ui-monospace,Consolas,monospace}.dialog .list li:before{content:"◇ ";color:var(--amber)}
+#warning{position:fixed;z-index:50;left:50%;bottom:20px;transform:translateX(-50%);padding:10px 18px;background:#0b1925;border:1px solid #7ad9ff55;border-radius:14px;display:none;font:11px ui-monospace,Consolas,monospace}
+@media(max-width:1250px){#interface{grid-template-columns:210px minmax(420px,1fr) 260px;gap:8px;padding:9px}.controls{gap:3px}.btn{padding:8px 7px}.pillbar .pill:nth-child(n+3){display:none}}
+@media(max-width:1040px){html,body{overflow:auto}#interface{position:relative;height:auto;min-height:100vh;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto auto auto;padding:12px}.header,#left,#right,#hero,#below,#footer{grid-column:1;grid-row:auto}.header{flex-wrap:wrap;gap:10px}#left,#right{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));height:250px}#agentPane,#ledgerPane,#eventsPane,#processPane,#todoPane,#terminalPane{height:100%;min-height:0}#hero{height:560px}#below{height:220px}#right{height:280px}#footer{min-height:28px}}
+@media(max-width:620px){#left,#right{grid-template-columns:1fr;height:auto;display:flex}#left>.pane,#right>.pane{height:auto;min-height:185px}#hero{height:460px}#below{grid-template-columns:1fr;height:auto}#below>.pane{height:200px}.pillbar{display:none}#lensHandle{width:140px;height:140px}}
+</style>
+</head>
+<body>
+<canvas id="gpu" aria-hidden="true"></canvas><canvas id="fallback" aria-hidden="true"></canvas>
+<div id="interface">
+<header class="pane header" data-glass>
+ <div class="brand"><div class="mark">✧</div><div><strong>DNA / PRISM</strong><small>OPTICAL ORCHESTRATION SYSTEM · DEMO</small></div></div>
+ <div class="pillbar"><span class="pill">GLASS <strong id="engineLabel">INITIALIZING</strong></span><span class="pill">AGENTS <strong>06 ONLINE</strong></span><span class="pill">TOKENS <strong id="headerTokens">24,000</strong></span></div>
+ <div class="controls"><button class="btn" id="pauseBtn">PAUSE</button><button class="btn" id="smallDrain">−250 TOK</button><button class="btn warning" id="bigDrain">−3,000 TOK</button><button class="btn" id="scanBtn">SCAN</button><button class="btn" id="themeBtn">PALETTE</button><button class="btn active" id="glassBtn">OPTICS ON</button></div>
+</header>
+<div id="left">
+ <section class="pane" id="agentPane" data-glass><div class="sectionHead">Agent operations <span class="sub">LIVE</span></div><div id="agents"></div></section>
+ <section class="pane" id="ledgerPane" data-glass><div class="sectionHead">Consumption ledger <span class="sub">BUDGET</span></div><div class="metricGrid"><div class="metricTile"><small>REMAINING</small><strong id="budgetText">24,000</strong></div><div class="metricTile"><small>CONSUMED</small><strong id="spentText" style="color:var(--amber)">0</strong></div><div class="metricTile"><small>QUEUE</small><strong id="queueText">18</strong></div><div class="metricTile"><small>CHECKS</small><strong id="verifyText">4/5</strong></div></div></section>
+ <section class="pane" id="eventsPane" data-glass><div class="sectionHead">Action recorder <span class="sub">EVENT LOG</span></div><div id="eventRows"></div></section>
+</div>
+<main class="pane" id="hero" data-glass>
+ <div class="heroHeading"><div><strong>REFRACTIVE DNA CHAMBER</strong><span>Move the glass lens across the animated strands</span></div><div class="sub">Snell · Fresnel · Spectral dispersion<br>REFLECTIONS / LIVE SCENE</div></div>
+ <div id="lensHandle" title="Drag to see the DNA refract through the lens"></div>
+ <div class="heroFoot"><div class="heroLegend"><b>PRIMARY STRAND</b> / CYAN<br><b>SECONDARY STRAND</b> / IRIS<br><span id="heroCue">MOVE THE CRYSTAL LENS TO BEND LIGHT</span></div><div class="heroReadout">OPTICAL DENSITY 1.47<br>FRESNEL / REAL-TIME<br>RENDER PASS 02/02</div></div>
+</main>
+<div id="below">
+ <section class="pane miniPane" id="pulsePane" data-glass><div class="sectionHead">Runtime heartbeat <span class="sub" id="pulseStatus">NOMINAL</span></div><div class="miniBody"><canvas id="pulseCanvas"></canvas></div></section>
+ <section class="pane miniPane" id="radarPane" data-glass><div class="sectionHead">Active scan field <span class="sub">CONTACTS 04</span></div><div class="miniBody"><canvas id="radarCanvas"></canvas></div></section>
+ <section class="pane miniPane" id="tablePane" data-glass><div class="sectionHead">Context fabric <span class="sub">SLOTS</span></div><div class="miniBody"><table><thead><tr><th>CTX</th><th>MEM</th><th>IO</th></tr></thead><tbody id="ctxBody"></tbody></table></div></section>
+</div>
+<div id="right">
+ <section class="pane" id="processPane" data-glass><div class="sectionHead">DNA workflow <span class="sub">CLICK STAGE ↗</span></div><div class="workflow" id="workflow"></div></section>
+ <section class="pane" id="todoPane" data-glass><div class="sectionHead">Execution checklist <span class="sub" id="todoStatus">03 / 05</span></div><ul class="tasklist" id="todos"></ul></section>
+ <section class="pane" id="terminalPane" data-glass><div class="sectionHead">Operator terminal <span class="sub">INPUT ACTIVE</span></div><div class="termWrap"><div class="termOutput" id="terminalOut"></div><div class="termEntry"><span>DNA ›</span><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="help · scan · drain 500"></div></div></section>
+</div>
+<footer class="pane" id="footer" data-glass><div id="marquee">◈ SCANNING SEMANTIC CHAINS　 ·　◈ WORKER SHARDS SYNCHRONIZED　 ·　◈ EVENT BUS IDLE　 ·　◈ FRESNEL PIPELINE ACTIVE　 ·　◈ SCANNING SEMANTIC CHAINS</div><div>SIMULATION · NO BACKEND CONNECTED　/　WEBGL2 OPTICAL PIPELINE</div></footer>
+</div>
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="dialog"><header><h2 id="modalTitle">INSPECT</h2><button class="btn" id="closeModal">CLOSE ✕</button></header><p id="modalIntro"></p><div id="modalDetails" class="detail"></div><ul id="modalList" class="list"></ul></div></div>
+<div id="warning"></div>
+<script id="glassVs" type="x-shader/x-vertex">#version 300 es
+precision highp float;
+const vec2 pos[3]=vec2[3](vec2(-1.,-1.),vec2(3.,-1.),vec2(-1.,3.));
+out vec2 vuv;
+void main(){vec2 p=pos[gl_VertexID]; vuv=p*.5+.5; gl_Position=vec4(p,0.,1.);}
+</script>
+<script id="glassFs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+in vec2 vuv;out vec4 outColor;
+uniform sampler2D uScene;
+uniform vec2 uResolution;
+uniform vec4 uPanes[18];
+uniform int uPaneCount;
+uniform vec3 uLens;
+uniform float uTime;
+uniform float uOptics;
+uniform vec3 uAccent;
+float sdfRound(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}
+vec3 ambientReflection(vec3 refl,vec2 uv){
+ vec3 light0=normalize(vec3(-.48,.64,.58));
+ vec3 light1=normalize(vec3(.70,.10,.72));
+ vec3 light2=normalize(vec3(.15,-.78,.65));
+ float beam0=pow(max(dot(refl,light0),0.),64.);
+ float beam1=pow(max(dot(refl,light1),0.),125.);
+ float beam2=pow(max(dot(refl,light2),0.),40.);
+ float strip=exp(-pow((refl.x+refl.y*.25-.25)*8.,2.));
+ return vec3(.62,.96,1.)*beam0*.85+vec3(.92,.76,1.)*beam1*.80+vec3(1.,.72,.48)*beam2*.45+uAccent*strip*.06;
+}
+vec3 grabScene(vec2 uv){return texture(uScene,clamp(uv,vec2(.001),vec2(.999))).rgb;}
+void main(){
+ vec2 p=vec2(gl_FragCoord.x,uResolution.y-gl_FragCoord.y);
+ vec2 uv=gl_FragCoord.xy/uResolution;
+ vec3 color=grabScene(uv);
+ // Curved optical glass surfaces are simulated with an analytic normal and Snell-inspired bending.
+ for(int i=0;i<18;i++){
+  if(i>=uPaneCount)break;
+  vec4 rect=uPanes[i];
+  vec2 center=rect.xy+rect.zw*.5;
+  vec2 q=p-center;
+  float radius=min(26.,min(rect.z,rect.w)*.15);
+  float sd=sdfRound(q,rect.zw*.5,radius);
+  if(sd>0.)continue;
+  float inset=-sd;
+  float rim=exp(-inset*.20);
+  float rim2=exp(-inset*.055);
+  vec2 n2=clamp(q/(rect.zw*.5),-1.,1.);
+  vec2 normal2=normalize(n2+vec2(.0001))*pow(max(0.,1.-inset/42.),1.6);
+  float micro=(sin(n2.y*16.+uTime*.65)*sin(n2.x*9.-uTime*.48))*.005;
+  vec3 N=normalize(vec3(normal2*.76+micro,1.));
+  vec3 V=normalize(vec3((p-uResolution*.5)/uResolution.y*.16,1.));
+  float costh=clamp(dot(N,V),0.,1.);
+  float fresnel=.042+.958*pow(1.-costh,5.);
+  // Three wavelength paths give chromatic dispersion, sampled from the MOVING scene.
+  vec2 offset=normal2*min(inset*.00025,.009)*uOptics;
+  vec2 ruv=uv-vec2(offset.x,-offset.y);
+  vec2 disp=normal2*.0016*rim2*uOptics;
+  vec3 through=vec3(grabScene(ruv+disp).r,grabScene(ruv).g,grabScene(ruv-disp).b);
+  // Screen-space reflected energy plus analytic moving virtual light sources.
+  vec3 R=reflect(-V,N);
+  vec2 reflectionUV=uv+vec2(R.x,-R.y)*(.035+.025*rim2);
+  vec3 reflected=grabScene(reflectionUV);
+  float reflectedLum=max(max(reflected.r,reflected.g),reflected.b);
+  vec3 environment=ambientReflection(R,uv);
+  float spec=pow(max(dot(R,normalize(vec3(sin(uTime*.27)*.35+.14,.62,.86))),0.),95.);
+  color=mix(through,mix(environment,reflected*clamp(reflectedLum*.9,0.,1.5),.26),fresnel*.47*uOptics);
+  color+=environment*(.06+.50*rim)*uOptics;
+  color+=vec3(1.)*spec*.16*uOptics;
+  color+=uAccent*(.004+.008*rim2);
+  color+=vec3(.55,.85,1.)*pow(rim,2.)*.085*uOptics;
+ }
+ // A draggable SPHERICAL GLASS lens with curved normals and stronger refraction.
+ vec2 lp=(p-uLens.xy)/uLens.z;
+ float rr=dot(lp,lp);
+ if(rr<1.){
+  float nz=sqrt(max(0.,1.-rr));
+  vec3 N=normalize(vec3(lp*.85,nz));
+  vec3 V=normalize(vec3(0.,0.,1.));
+  float fresnel=.042+.958*pow(1.-max(dot(N,V),0.),5.);
+  // Local refracted intersection approximation for a sphere: stronger warping toward rim.
+  float edge=1.-nz;
+  vec2 refraction=lp*(.028+.055*edge)*uOptics;
+  vec2 refrUv=uv-vec2(refraction.x,-refraction.y);
+  float split=.002+.004*edge;
+  vec2 shift=lp*split*uOptics;
+  vec3 refracted=vec3(grabScene(refrUv-shift).r,grabScene(refrUv).g,grabScene(refrUv+shift).b);
+  vec3 R=reflect(-V,N);
+  vec3 reflected=grabScene(uv+vec2(R.x,-R.y)*(.055+.03*edge));
+  vec3 environment=ambientReflection(R,uv);
+  float movingLight=pow(max(dot(R,normalize(vec3(sin(uTime*.7)*.36-.36,cos(uTime*.34)*.32+.52,.82))),0.),130.);
+  float rim=pow(1.-nz,4.);
+  vec3 sphere=mix(refracted,environment*.85+reflected*.30,clamp(fresnel*.72*uOptics,0.,.86));
+  sphere+=vec3(.86,.97,1.)*(movingLight*.76+rim*.42)*uOptics;
+  sphere+=uAccent*.025*rim;
+  color=mix(color,sphere,(1.-smoothstep(.974,1.,sqrt(rr))));
+ }
+ outColor=vec4(max(color,vec3(0.)),1.);
+}
+</script>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id), gpu=$('gpu'), fallback=$('fallback'), scene=document.createElement('canvas'), s=scene.getContext('2d',{alpha:false});
+const gl=gpu.getContext('webgl2',{alpha:false,antialias:true,premultipliedAlpha:false,powerPreference:'high-performance'});
+const stages=[
+ {id:'IN',name:'Intake',status:'PASS',description:'Parse objective, associate project scope, register runtime identity.',tasks:['Normalize user request','Load constraints','Bind latest memory snapshot','Create job envelope']},
+ {id:'PL',name:'Planning',status:'PASS',description:'Decompose work and define exact deterministic acceptance criteria.',tasks:['Build task plan','Estimate token ceiling','Declare test commands','Map dependencies']},
+ {id:'RT',name:'Routing',status:'ACTIVE',description:'Route bounded jobs to specialists and queue independent batch shards.',tasks:['Reserve worker permits','Choose model tier','Dispatch shard batches','Track wake-up events']},
+ {id:'EX',name:'Execute',status:'RUN',description:'Worker executes the assigned task against its bounded contract.',tasks:['Read scoped context','Perform work','Emit artifacts','Signal completion']},
+ {id:'VF',name:'Verify',status:'WAIT',description:'Execute real deterministic tests rather than trusting worker claims.',tasks:['Run acceptance test suite','Compare observed results','Record pass/fail evidence','Request precise repair']},
+ {id:'CM',name:'Commit',status:'WAIT',description:'Persist approved artifacts and update run metadata and memory.',tasks:['Write accepted output','Store checkpoint','Finalize run state','Notify the user']}
+];
+const roles=[['PLANNER',.79],['CODER',.64],['VERIFIER',.55],['ANALYST',.43],['MEMORY',.72],['WATCHER',.34]];
+const state={playing:true, optics:true, spent:0, remaining:24000, queue:18, selected:2, theme:0, tick:0, hue:0, events:[], phase:0, reflections:1, status:'NOMINAL', lastFrame:0, lensX:0, lensY:0, lensR:105, lensDragging:false, particles:[], completed:0, lastBeat:0, beatTime:0, radarBlips:[{theta:.8,r:.46,speed:.13},{theta:2.7,r:.65,speed:-.09},{theta:4.4,r:.30,speed:.10},{theta:5.5,r:.78,speed:-.04}], checks:[true,true,true,false,false], pulseSamples:Array(240).fill(0), pulseHead:0};
+const themes=[{name:'ICE / IRIS',a:'#8af6f2',b:'#c4a4ff',c:'#ffd09e',rgb:[.55,.92,1.]},{name:'PEARL / GOLD',a:'#c1e9f3',b:'#ffd2a0',c:'#a4edff',rgb:[.78,.9,1.]},{name:'OPAL / MINT',a:'#8efaca',b:'#8fcaff',c:'#ebc7ff',rgb:[.54,.96,.81]},{name:'NIGHT / VIOLET',a:'#c9b2ff',b:'#77e7ff',c:'#ffbdd7',rgb:[.76,.68,1.]}];
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function lerp(a,b,t){return a+(b-a)*t}function rand(a,b){return a+Math.random()*(b-a)}
+function ctxColor(hex,alpha){let h=hex.slice(1);let n=parseInt(h,16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${alpha})`}
+function output(msg){const ts=new Date().toLocaleTimeString('en-GB',{hour12:false});state.events.unshift({t:ts.slice(-8),m:msg});state.events.length=Math.min(state.events.length,22);$('terminalOut').textContent=state.events.slice(0,6).map(e=>`> ${e.m}`).join('\n');$('eventRows').innerHTML=state.events.slice(0,14).map(e=>`<div class="event"><time>${e.t.slice(-5)}</time><span>${e.m.replaceAll('<','&lt;')}</span></div>`).join('')}
+function refresh(){
+ $('headerTokens').textContent=state.remaining.toLocaleString();$('budgetText').textContent=state.remaining.toLocaleString();$('spentText').textContent=state.spent.toLocaleString();$('queueText').textContent=state.queue.toString();$('verifyText').textContent=`${state.checks.filter(Boolean).length}/5`;
+ $('agents').innerHTML=roles.map(([name,load],i)=>`<div class="agentrow" data-agent="${i}"><b>${name}</b><div class="meter"><i style="width:${Math.round(load*100)}%"></i></div><span>${Math.round(load*100)}%</span></div>`).join('');
+ $('workflow').innerHTML=stages.map((a,i)=>`<div class="stage ${i===state.selected?'selected':''}" data-stage="${i}"><span class="num">${(i+1).toString().padStart(2,'0')}</span><b>${a.name.toUpperCase()}</b><span class="st">${a.status}</span></div>`).join('');
+ $('todos').innerHTML=['Define machine-checkable acceptance','Dispatch worker shard','Receive worker event','Validate test evidence','Commit approved artifact'].map((str,i)=>`<li><input type="checkbox" id="cb${i}" data-check="${i}" ${state.checks[i]?'checked':''}><label for="cb${i}">${str}</label></li>`).join('');
+ $('todoStatus').textContent=`${state.checks.filter(Boolean).length} / 05`;
+ $('ctxBody').innerHTML=Array.from({length:7},(_,i)=>`<tr><td>${String(i+1).padStart(2,'0')} / ${Math.round(state.remaining/520+i*3)}</td><td>${Math.round((i*13+state.tick*3)%98)}</td><td>${Math.round((i*17+state.queue*2)%96)}</td></tr>`).join('');
+ document.documentElement.style.setProperty('--cyan',themes[state.theme].a);document.documentElement.style.setProperty('--amber',themes[state.theme].c);
+}
+function drain(n){n=Math.max(0,Math.min(n, state.remaining));if(!n)return;state.remaining-=n;state.spent+=n;const count=Math.min(190,Math.max(3,Math.round(n/20)));const hero=$('hero').getBoundingClientRect();const ox=hero.left+hero.width*.36,oy=hero.top+hero.height*.52;for(let i=0;i<count;i++){let a=rand(0,Math.PI*2),v=rand(20,140)*(n>500?1.4:.6);state.particles.push({x:ox+rand(-15,15),y:oy+rand(-70,70),vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.7,1.55),max:1.55,side:i%3})}state.particles.splice(0,Math.max(0,state.particles.length-380));output(`${n.toLocaleString()} tokens spent · ${count} visual quanta`);refresh()}
+function scan(){state.queue=Math.min(60,state.queue+3);output('Verifier: 5 acceptance checks requested');stages[4].status='ACTIVE';refresh();setTimeout(()=>{state.checks[3]=true;stages[4].status='PASS';output('Verifier: 4/5 checks passed · 1 pending');refresh()},650)}
+function advance(){state.queue=Math.max(0,state.queue-1);state.completed++;const i=state.completed%stages.length;stages[i].status='PASS';stages[(i+1)%stages.length].status='ACTIVE';state.selected=(i+1)%stages.length;output(`Stage ${stages[i].name} complete · next ${stages[state.selected].name}`);refresh()}
+function openStage(idx){state.selected=idx;refresh();let a=stages[idx];$('modalTitle').textContent=`${idx+1}. ${a.name.toUpperCase()} / INTERNAL PROCESS`;$('modalIntro').textContent=a.description;$('modalDetails').innerHTML=`<div class="detailBox"><b>RUNTIME STATUS</b><span>${a.status} / SIMULATED</span></div><div class="detailBox"><b>ACTIVITY BUDGET</b><span>${state.remaining.toLocaleString()} tokens remaining</span></div>`;$('modalList').innerHTML=a.tasks.map((t,i)=>`<li>${i<a.tasks.length-2?'✓':'○'} ${t}</li>`).join('');$('modal').classList.add('show')}
+function showAgent(i){const [name,load]=roles[i];$('modalTitle').textContent=`AGENT / ${name}`;$('modalIntro').textContent=`Live simulated resource and operational state for the ${name.toLowerCase()} specialist.`;$('modalDetails').innerHTML=`<div class="detailBox"><b>LOAD</b><span>${Math.round(load*100)}%</span></div><div class="detailBox"><b>RESOURCE CAP</b><span>${state.remaining.toLocaleString()} tokens pooled</span></div>`;$('modalList').innerHTML='<li>Bounded task ownership</li><li>Event-driven wakeups, no token polling</li><li>Deterministic status tracking</li>';$('modal').classList.add('show')}
+// GPU setup: a procedurally rendered, dynamic Canvas scene is uploaded as a texture.
+// Every glass fragment is optically composited in GLSL using curved normals,
+// scene-space refraction, chromatic dispersion, and Fresnel/environment reflections.
+let program=null,sceneTex=null,loc={},glReady=false;
+function shader(type,src){let o=gl.createShader(type);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o}
+function initGL(){if(!gl)throw Error('WebGL2 unavailable');let v=shader(gl.VERTEX_SHADER,$('glassVs').textContent),f=shader(gl.FRAGMENT_SHADER,$('glassFs').textContent);program=gl.createProgram();gl.attachShader(program,v);gl.attachShader(program,f);gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);sceneTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,sceneTex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.uniform1i(gl.getUniformLocation(program,'uScene'),0);for(let [k,v] of Object.entries({res:'uResolution',pane:'uPanes[0]',count:'uPaneCount',lens:'uLens',time:'uTime',optics:'uOptics',accent:'uAccent'}))loc[k]=gl.getUniformLocation(program,v);glReady=true;$('engineLabel').textContent='WEBGL2 ACTIVE'}
+function dimensions(){const w=window.innerWidth,h=window.innerHeight;gpu.width=scene.width=w;gpu.height=scene.height=h;if(glReady)gl.viewport(0,0,w,h);fallback.width=w;fallback.height=h;setLensFromHero(true)}
+function setLensFromHero(force){let r=$('hero').getBoundingClientRect();state.lensR=clamp(Math.min(r.width,r.height)*.22,66,130);if(force||!state.lensX){state.lensX=r.left+r.width*.46;state.lensY=r.top+r.height*.52}state.lensX=clamp(state.lensX,r.left+state.lensR+14,r.right-state.lensR-14);state.lensY=clamp(state.lensY,r.top+state.lensR+20,r.bottom-state.lensR-20);let handle=$('lensHandle');handle.style.width=state.lensR*2+'px';handle.style.height=state.lensR*2+'px';handle.style.left=(state.lensX-r.left-state.lensR)+'px';handle.style.top=(state.lensY-r.top-state.lensR)+'px'}
+function rect(x,y,w,h,r=20){s.beginPath();s.roundRect(x,y,w,h,r)}
+function line(x,y,xx,yy,color,width=1,glow=0){s.beginPath();s.moveTo(x,y);s.lineTo(xx,yy);s.strokeStyle=color;s.lineWidth=width;if(glow){s.shadowBlur=glow;s.shadowColor=color};s.stroke();s.shadowBlur=0}
+function circle(x,y,r,color,glow=0){s.fillStyle=color;if(glow){s.shadowBlur=glow;s.shadowColor=color};s.beginPath();s.arc(x,y,r,0,Math.PI*2);s.fill();s.shadowBlur=0}
+function drawScene(time,dt){let w=scene.width,h=scene.height,hero=$('hero').getBoundingClientRect(),T=time*.001,theme=themes[state.theme];
+ const bg=s.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#030912');bg.addColorStop(.52,'#06111b');bg.addColorStop(1,'#020712');s.fillStyle=bg;s.fillRect(0,0,w,h);
+ // Calm, bright environmental light surfaces that can be REFLECTED and REFRACTED.
+ [[w*.31,h*.18,theme.a,.058,470],[w*.73,h*.48,theme.b,.045,340],[w*.49,h*.82,theme.c,.028,250]].forEach(([x,y,c,a,r])=>{let g=s.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,ctxColor(c,a));g.addColorStop(1,ctxColor(c,0));s.fillStyle=g;s.fillRect(x-r,y-r,r*2,r*2)});
+ // Architectural luminous glass room lines, appearing in reflections.
+ s.save();s.beginPath();s.rect(hero.left,hero.top,hero.width,hero.height);s.clip();
+ const hx=hero.left,hy=hero.top,hw=hero.width,hh=hero.height;
+ for(let i=0;i<19;i++){let x=hx+hw*(i/18);line(x,hy+64,x,hy+hh-50,'rgba(174,242,255,.028)',1)}
+ for(let i=0;i<12;i++){let y=hy+hh*(i/11);line(hx+24,y,hx+hw-25,y,'rgba(174,242,255,.025)',1)}
+ // Volumetric light streaks in the rear plane.
+ for(let i=0;i<6;i++){let x=hx+hw*(i+.5)/7+Math.sin(T*.34+i)*22;let grd=s.createLinearGradient(x-45,0,x+45,0);grd.addColorStop(0,'#aaffff00');grd.addColorStop(.5,ctxColor(i%2?theme.a:theme.b,.10));grd.addColorStop(1,'#aaffff00');s.fillStyle=grd;s.beginPath();s.moveTo(x-45,hy+70);s.lineTo(x+10,hy+70);s.lineTo(x+46,hy+hh-20);s.lineTo(x-10,hy+hh-20);s.closePath();s.fill()}
+ // DNA: actual animated 3D-inspired double helix, with depth shading and bond rods.
+ let axisX=hx+hw*.355, top=hy+54, bottom=hy+hh-50, height=bottom-top;
+ let nodesA=[],nodesB=[],samples=200;
+ for(let i=0;i<=samples;i++){let u=i/samples,phase=u*Math.PI*11+T*.84,depth=Math.cos(phase);let cy=top+u*height;let spread=Math.min(92,hw*.18);nodesA.push({x:axisX+Math.sin(phase)*spread,y:cy,z:depth});nodesB.push({x:axisX-Math.sin(phase)*spread,y:cy,z:-depth})}
+ for(let i=0;i<samples;i+=4){let a=nodesA[i],b=nodesB[i];line(a.x,a.y,b.x,b.y,`rgba(191,227,255,${.10+Math.abs(a.z)*.17})`,1.0)}
+ for(let strand of [0,1]){let arr=strand===0?nodesA:nodesB,col=strand===0?theme.a:theme.b;for(let i=0;i<samples;i++){let a=arr[i],b=arr[i+1];let alpha=.30+(a.z+1)*.28;line(a.x,a.y,b.x,b.y,ctxColor(col,alpha),strand===0?2.25:2.15,alpha>.6?7:0)}for(let i=0;i<=samples;i+=2){let a=arr[i];circle(a.x,a.y,1.2+(a.z+1)*.85,ctxColor(col,.54+(a.z+1)*.18),5)}}
+ // Thin filament streams behind draggable lens, giving it something moving to refract.
+ for(let i=0;i<8;i++){let startX=hx+hw*.51, endX=hx+hw*.95, y=hy+hh*(.18+i*.086),j=Math.sin(T*1.4+i*.7)*24;s.beginPath();s.moveTo(startX,y);s.bezierCurveTo(startX+hw*.12,y+j,endX-hw*.18,y-j,endX,y+Math.sin(T+i)*9);s.strokeStyle=ctxColor(i%3===0?theme.c:theme.a,.19+(i%2)*.12);s.lineWidth=i%3===0?1.35:1.0;s.stroke();for(let p=0;p<2;p++){let u=(T*(.08+.012*i)+p*.6+i*.14)%1;let px=lerp(startX,endX,u),py=y+Math.sin(u*Math.PI*2+T+i)*j*.45;circle(px,py,1.8,theme.a,8)}}
+ // Canvas particle quanta scaled to exact-ish token expenditure.
+ state.particles=state.particles.filter(p=>p.life>0);for(let p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.992;p.vy*=.992;circle(p.x,p.y,Math.max(.3,2*p.life/p.max),ctxColor(p.side===0?theme.c:(p.side===1?theme.a:theme.b),clamp(p.life/p.max,0,1)),7)}
+ // Transparent animated engraved sample codes.
+ s.font='10px Consolas,monospace';s.fillStyle='#b4d9e355';for(let i=0;i<8;i++){s.fillText(`SEQ.${String(i).padStart(2,'0')} // ${(Math.sin(T*.5+i)*12+78).toFixed(1)}`,hx+24,hy+125+i*34)}
+ s.restore();
+ // Slowly moving reflected room ceiling fixtures across every pane.
+ for(let i=0;i<5;i++){let x=w*(i+.5)/5+Math.sin(T*.22+i)*32;let grad=s.createLinearGradient(x-70,0,x+70,0);grad.addColorStop(0,'#bcecff00');grad.addColorStop(.5,ctxColor(i%2?theme.b:theme.a,.025));grad.addColorStop(1,'#bcecff00');s.fillStyle=grad;s.fillRect(x-70,0,140,h)}
+}
+function paneUniforms(time){let paneEls=Array.from(document.querySelectorAll('[data-glass]'));let rects=new Float32Array(18*4);let count=0;for(let p of paneEls){if(count>=18)break;let r=p.getBoundingClientRect();if(r.right<0||r.bottom<0||r.left>innerWidth||r.top>innerHeight)continue;rects.set([r.left,r.top,r.width,r.height],count*4);count++}gl.useProgram(program);gl.uniform2f(loc.res,scene.width,scene.height);gl.uniform4fv(loc.pane,rects);gl.uniform1i(loc.count,count);gl.uniform3f(loc.lens,state.lensX,state.lensY,state.lensR);gl.uniform1f(loc.time,time*.001);gl.uniform1f(loc.optics,state.optics?1:0);gl.uniform3fv(loc.accent,new Float32Array(themes[state.theme].rgb))}
+function drawGlass(t){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,sceneTex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,scene);paneUniforms(t);gl.drawArrays(gl.TRIANGLES,0,3)}
+// Clean optical fallback for browsers that disable WebGL. The GPU path above is primary.
+function renderFallback(t){
+ let fb=fallback.getContext('2d'),w=fallback.width,h=fallback.height;
+ fb.clearRect(0,0,w,h);fb.drawImage(scene,0,0);
+ let panes=document.querySelectorAll('[data-glass]');
+ for(let p of panes){let r=p.getBoundingClientRect();if(r.width<5||r.height<5)continue;
+  fb.save();let rim=fb.createLinearGradient(r.left,r.top,r.right,r.bottom);
+  rim.addColorStop(0,'rgba(211,255,255,.23)');rim.addColorStop(.35,'rgba(255,255,255,.04)');rim.addColorStop(.75,'rgba(162,218,254,.13)');rim.addColorStop(1,'rgba(255,255,255,.3)');
+  fb.strokeStyle=rim;fb.lineWidth=1.4;fb.beginPath();fb.roundRect(r.left+1,r.top+1,r.width-2,r.height-2,Math.min(24,r.height*.15));fb.stroke();
+  fb.beginPath();fb.roundRect(r.left+5,r.top+5,Math.max(0,r.width-10),Math.max(0,r.height-10),Math.min(21,r.height*.14));fb.strokeStyle='rgba(233,255,255,.035)';fb.stroke();fb.restore();
+ }
+ let x=state.lensX,y=state.lensY,r=state.lensR;
+ fb.save();fb.beginPath();fb.arc(x,y,r,0,Math.PI*2);fb.clip();
+ // Low-distortion center, moving more strongly toward an optical rim.
+ fb.drawImage(scene,x-r*1.10,y-r*1.10,r*2.2,r*2.2,x-r,y-r,2*r,2*r);
+ fb.globalAlpha=.16;
+ fb.save();fb.translate(x,y);fb.rotate(-.22+Math.sin(t*.0004)*.12);fb.scale(-1,1);fb.drawImage(scene,x-r*.6,y-r*.65,r*1.5,r*1.35,-r,-r,r*2,r*2);fb.restore();fb.globalAlpha=1;
+ let body=fb.createRadialGradient(x-r*.28,y-r*.35,r*.06,x,y,r);
+ body.addColorStop(0,'rgba(232,255,255,.04)');body.addColorStop(.62,'rgba(135,235,255,.015)');body.addColorStop(.88,'rgba(160,244,255,.07)');body.addColorStop(.97,'rgba(215,255,255,.24)');body.addColorStop(1,'rgba(240,255,255,.58)');
+ fb.fillStyle=body;fb.fillRect(x-r,y-r,r*2,r*2);fb.restore();
+ fb.strokeStyle='rgba(228,255,255,.53)';fb.lineWidth=1.2;fb.beginPath();fb.arc(x,y,r-.8,0,Math.PI*2);fb.stroke();
+ fb.beginPath();fb.arc(x,y,r*.91,Math.PI*.90,Math.PI*1.57);fb.strokeStyle='rgba(245,255,255,.65)';fb.lineWidth=2.5;fb.stroke();
+ fb.beginPath();fb.arc(x,y,r*.93,-.39,.67);fb.strokeStyle='rgba(152,226,255,.25)';fb.lineWidth=3;fb.stroke();
+ let sx=x-r*.36,sy=y-r*.52,g=fb.createRadialGradient(sx,sy,1,sx,sy,r*.30);g.addColorStop(0,'rgba(255,255,255,.62)');g.addColorStop(.2,'rgba(255,255,255,.14)');g.addColorStop(1,'rgba(255,255,255,0)');fb.fillStyle=g;fb.beginPath();fb.arc(sx,sy,r*.30,0,Math.PI*2);fb.fill();
+}
+function drawPulseAndRadar(t){let r=$('pulseCanvas').getBoundingClientRect(),c=$('pulseCanvas'),ctx=c.getContext('2d');if(c.width!==Math.round(r.width)){c.width=r.width;c.height=r.height}ctx.clearRect(0,0,c.width,c.height);ctx.strokeStyle='#a9ffff15';for(let i=1;i<=3;i++){ctx.beginPath();ctx.moveTo(0,i*c.height/4);ctx.lineTo(c.width,i*c.height/4);ctx.stroke()}
+ const N=state.pulseSamples.length,head=state.pulseHead;ctx.beginPath();for(let i=0;i<N;i++){let idx=(head+i)%N,x=i/(N-1)*c.width,y=c.height*.62-state.pulseSamples[idx]*c.height*.35;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.strokeStyle=state.status==='NOMINAL'?themes[state.theme].a:'#ff7997';ctx.lineWidth=1.4;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=9;ctx.stroke();ctx.shadowBlur=0;
+ let rc=$('radarCanvas'),rr=rc.getBoundingClientRect();if(rc.width!==Math.round(rr.width)){rc.width=rr.width;rc.height=rr.height}let x=rc.getContext('2d');x.clearRect(0,0,rc.width,rc.height);let cx=rc.width*.5,cy=rc.height*.53,rad=Math.min(rc.height*.43,rc.width*.36);x.strokeStyle='#99fafa26';for(let i=1;i<=3;i++){x.beginPath();x.arc(cx,cy,i*rad/3,0,Math.PI*2);x.stroke()}let theta=t*.00048;x.save();x.translate(cx,cy);x.rotate(theta);let g=x.createLinearGradient(0,0,rad,0);g.addColorStop(0,'#91eaff08');g.addColorStop(1,'#95ffffc5');x.strokeStyle=g;x.lineWidth=1.5;x.beginPath();x.moveTo(0,0);x.lineTo(rad,0);x.stroke();x.restore();for(let b of state.radarBlips){let ang=b.theta+t*.001*b.speed,px=cx+Math.cos(ang)*b.r*rad,py=cy+Math.sin(ang)*b.r*rad;circle2d(x,px,py,2.5,ctxColor(themes[state.theme].c,.85));}}
+function circle2d(ctx,x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill()}
+function advancePulse(t){let dt=t-state.lastBeat;if(dt>1100){state.lastBeat=t}let phase=dt/1100,a=state.status==='NOMINAL'?1:.13;
+ let v=0;if(phase<.12)v=0;else if(phase<.2)v=.16*Math.sin((phase-.12)/.08*Math.PI)*a;else if(phase<.255)v= - .20*a;else if(phase<.285)v=1.0*a;else if(phase<.325)v=-.30*a;else if(phase<.50)v=.20*Math.sin((phase-.325)/.175*Math.PI)*a;state.pulseSamples[state.pulseHead]=v;state.pulseHead=(state.pulseHead+1)%state.pulseSamples.length}
+let last=performance.now();let lastUI=0;function frame(t){const dt=Math.min(.05,(t-last)/1000);last=t;if(state.playing){state.tick+=dt;state.phase+=dt;advancePulse(t)}drawScene(t,dt);if(glReady){drawGlass(t)}else{renderFallback(t)}drawPulseAndRadar(t);if(t-lastUI>550){refresh();lastUI=t}requestAnimationFrame(frame)}
+function command(text){let [cmd,arg]=text.trim().toLowerCase().split(/\s+/);if(cmd==='help')output('help · status · drain <n> · step · scan · palette · optics');else if(cmd==='status')output(`tokens=${state.remaining} queue=${state.queue} checks=${state.checks.filter(Boolean).length}/5`);else if(cmd==='drain')drain(Number(arg)||250);else if(cmd==='step')advance();else if(cmd==='scan')scan();else if(cmd==='palette')$('themeBtn').click();else if(cmd==='optics')$('glassBtn').click();else output('Unknown command — type help')}
+$('pauseBtn').onclick=()=>{state.playing=!state.playing;$('pauseBtn').textContent=state.playing?'PAUSE':'RESUME';output(state.playing?'Renderer resumed':'Execution paused')};$('smallDrain').onclick=()=>drain(250);$('bigDrain').onclick=()=>drain(3000);$('scanBtn').onclick=scan;$('themeBtn').onclick=()=>{state.theme=(state.theme+1)%themes.length;output(`Prism spectrum: ${themes[state.theme].name}`);refresh()};$('glassBtn').onclick=()=>{state.optics=!state.optics;$('glassBtn').textContent=state.optics?'OPTICS ON':'OPTICS OFF';$('glassBtn').classList.toggle('active',state.optics);output(state.optics?'Optical shader enabled':'Optical components disabled')};
+$('workflow').onclick=e=>{let a=e.target.closest('[data-stage]');if(a)openStage(+a.dataset.stage)};$('agents').onclick=e=>{let a=e.target.closest('[data-agent]');if(a)showAgent(+a.dataset.agent)};$('todos').onchange=e=>{if(e.target.matches('[data-check]')){state.checks[+e.target.dataset.check]=e.target.checked;refresh()}};
+$('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};$('terminalInput').onkeydown=e=>{if(e.key==='Enter'){command(e.target.value);e.target.value=''}};window.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show');if(e.key==='`')$('terminalInput').focus()});
+let dragOffset={x:0,y:0};$('lensHandle').addEventListener('pointerdown',e=>{state.lensDragging=true;dragOffset={x:e.clientX-state.lensX,y:e.clientY-state.lensY};$('lensHandle').setPointerCapture(e.pointerId)});$('lensHandle').addEventListener('pointermove',e=>{if(!state.lensDragging)return;state.lensX=e.clientX-dragOffset.x;state.lensY=e.clientY-dragOffset.y;setLensFromHero(false)});$('lensHandle').addEventListener('pointerup',()=>state.lensDragging=false);$('lensHandle').addEventListener('pointercancel',()=>state.lensDragging=false);
+window.addEventListener('resize',dimensions);try{initGL()}catch(e){console.warn('WebGL2 unavailable:',e.message);fallback.style.display='block';gpu.style.display='none';$('engineLabel').textContent='CANVAS FALLBACK';$('warning').style.display='block';$('warning').textContent='WebGL2 unavailable — using Canvas 2D scene fallback';setTimeout(()=>$('warning').style.display='none',2200)}
+output('PRISM renderer online · simulated runtime');output('Drag the lens across the DNA to see optical bending');refresh();dimensions();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

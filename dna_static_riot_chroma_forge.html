@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNA // STATIC RIOT — Cyberpunk Operations Terminal</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#010102;color:#ecf4e8}body{font-family:Consolas,Menlo,monospace}
+#screen{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:none}
+#controls{position:fixed;right:clamp(10px,1.65vw,26px);top:clamp(7px,1.2vh,14px);display:flex;gap:7px;z-index:5}
+#controls button{font:700 10px/1.1 Consolas,monospace;padding:9px 11px;letter-spacing:.07em;border:1px solid #4f5a55;background:#060706;color:#f8ffe5;cursor:pointer;box-shadow:inset 0 2px #111917}
+#controls button:hover{border-color:#e1ff5c;color:#e1ff5c}#controls button:focus-visible{outline:2px solid #ebfca2;outline-offset:2px}
+#modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.86);z-index:10;padding:16px}#modal.show{display:grid}
+.dialog{width:min(850px,94vw);max-height:87vh;overflow:auto;background:#08090b;border:2px solid #dffb58;box-shadow:11px 11px 0 #191a10;color:#eeeede;font:12px/1.65 Consolas,Menlo,monospace}
+.dialogHeader{background:#dffb58;color:#08090a;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;font-weight:900;letter-spacing:.14em;font-size:15px}
+#closeModal{background:#0b0b0b;color:#dffb58;border:0;font:800 11px Consolas,monospace;padding:7px 11px;cursor:pointer}.dialogBody{padding:18px 22px}.dialogBody>p{color:#abb0a8;margin:0 0 16px;font-size:13px}
+.modalGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.modalCell{border-left:4px solid #c461f9;background:#111017;padding:10px 12px}.modalCell b{display:block;color:#dffb58;font-size:10px;letter-spacing:.12em}.modalCell span{display:block;color:#f1f1e8;font-size:12px;margin-top:3px}
+#modalTasks{list-style:none;margin:15px 0 0;padding:0}#modalTasks li{border-bottom:1px dashed #353b33;padding:8px 0;color:#ddd}#modalTasks li:before{content:'[+] ';color:#dffb58}
+#toast{position:fixed;top:76px;right:20px;z-index:7;border:1px solid #dffb58;background:#0c0c0a;color:#eaff9e;font:11px Consolas,monospace;padding:8px 14px;opacity:0;pointer-events:none;transition:opacity .18s}#toast.show{opacity:1}
+@media(max-width:730px){#controls button{font-size:9px;padding:6px} .modalGrid{grid-template-columns:1fr} .dialogHeader{font-size:11px}}
+
+/* THEME STUDIO — shared CSS variables are synchronized with the Canvas palette */
+:root{--skin-accent:#e0ff61;--skin-secondary:#d273fb;--skin-cyan:#66f5ef;--skin-warm:#ff875c;--skin-muted:#818b7d;--skin-white:#f3f4df;--skin-bg:#010102;--skin-surface:#08090b}
+html,body{background:var(--skin-bg);color:var(--skin-white)}
+#controls button{border-color:var(--skin-muted);color:var(--skin-white);background:var(--skin-surface)}
+#controls button:hover{border-color:var(--skin-accent);color:var(--skin-accent)}
+#modal{background:color-mix(in srgb,var(--skin-bg) 91%,transparent)}
+.dialog{background:var(--skin-surface);color:var(--skin-white);border-color:var(--skin-accent);box-shadow:11px 11px 0 color-mix(in srgb,var(--skin-accent) 12%,#000)}
+.dialogHeader{background:var(--skin-accent);color:var(--skin-bg)}
+#closeModal{background:var(--skin-bg);color:var(--skin-accent)}
+.dialogBody>p{color:var(--skin-muted)}
+.modalCell{border-left-color:var(--skin-secondary);background:color-mix(in srgb,var(--skin-secondary) 9%,var(--skin-surface))}
+.modalCell b,#modalTasks li:before{color:var(--skin-accent)}
+.modalCell span,#modalTasks li{color:var(--skin-white)}
+#modalTasks li{border-color:var(--skin-muted)}
+#toast{background:var(--skin-surface);border-color:var(--skin-accent);color:var(--skin-accent)}
+#themeStudio{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:15px;z-index:21;background:rgba(0,0,0,.87);color:var(--skin-white);font:12px/1.45 Consolas,Menlo,monospace}
+#themeStudio.show{display:flex}
+.studioShell{width:min(1040px,96vw);max-height:92vh;overflow:auto;background:var(--skin-surface);border:2px solid var(--skin-accent);box-shadow:13px 13px 0 #000}
+.studioHead{display:flex;justify-content:space-between;align-items:center;gap:15px;background:var(--skin-accent);color:var(--skin-bg);padding:13px 18px}
+.studioHead h2{margin:0;font:800 16px Consolas,monospace;letter-spacing:.12em}
+.studioHead button{border:1px solid var(--skin-bg);background:var(--skin-bg);color:var(--skin-accent);padding:8px 12px;font:700 11px Consolas,monospace;cursor:pointer}
+.studioBody{padding:16px 18px 20px}
+.studioIntro{color:var(--skin-muted);margin:0 0 12px}
+.studioSub{display:flex;justify-content:space-between;align-items:center;margin:14px 0 9px;border-bottom:1px solid var(--skin-muted);padding-bottom:7px;color:var(--skin-accent);font-weight:800;letter-spacing:.09em}
+.schemeGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.scheme{position:relative;background:var(--skin-bg);border:1px solid var(--skin-muted);cursor:pointer;min-height:89px;text-align:left;padding:11px 10px;color:var(--skin-white);font:700 11px Consolas,monospace}
+.scheme[aria-pressed="true"]{outline:2px solid var(--skin-accent);outline-offset:-3px}
+.scheme:hover{border-color:var(--skin-accent)}
+.swatches{display:flex;gap:3px;margin:8px 0 5px;height:25px}
+.swatches span{flex:1;min-width:0}
+.scheme small{font:9px Consolas,monospace;color:var(--skin-muted)}
+.studioColumns{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:16px}
+.colorGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.colorRow{display:flex;align-items:center;gap:7px;border:1px solid var(--skin-muted);padding:7px;background:var(--skin-bg);min-width:0}
+.colorRow span{flex:1;min-width:0;font:10px Consolas,monospace}
+.colorRow input[type=color]{background:none;width:37px;height:29px;border:none;padding:0;cursor:pointer}
+.colorRow code{font-size:9px;color:var(--skin-muted)}
+.themePreview{background:var(--skin-bg);border:1px solid var(--skin-muted);padding:10px;min-height:180px;position:relative;overflow:hidden}
+.themePreview .previewBar{height:23px;background:var(--skin-accent);color:var(--skin-bg);padding:4px 7px;font-weight:800}
+.previewInner{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.previewBox{border:1px solid var(--skin-muted);padding:8px;min-height:72px;background:var(--skin-surface)}
+.previewBox b{color:var(--skin-accent);font-size:10px}
+.previewBox em{font-style:normal;color:var(--skin-white);display:block;margin-top:6px;font-size:10px}
+.previewLine{height:4px;margin-top:8px;background:linear-gradient(90deg,var(--skin-secondary),var(--skin-cyan),var(--skin-warm))}
+.studioActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.studioActions button{border:1px solid var(--skin-accent);color:var(--skin-accent);background:var(--skin-bg);font:700 11px Consolas,monospace;padding:9px 12px;cursor:pointer}
+.studioActions button:hover{background:color-mix(in srgb,var(--skin-accent) 14%,var(--skin-bg))}
+.studioActions input{border:1px solid var(--skin-muted);background:var(--skin-bg);color:var(--skin-white);padding:8px 10px;min-width:0;flex:1;font:11px Consolas,monospace}
+@media(max-width:850px){.schemeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.studioColumns{grid-template-columns:1fr}}
+@media(max-width:500px){.colorGrid{grid-template-columns:1fr}.studioShell{max-height:95vh}.studioBody{padding:12px}.scheme{min-height:74px}}
+</style></head><body>
+<canvas id="screen" aria-label="DNA Static Riot animated cyberpunk terminal interface"></canvas>
+<div id="controls"><button id="pause">HALT [P]</button><button id="burst">TRAFFIC [B]</button><button id="theme">PALETTE [T]</button><button id="help">KEYS [?]</button></div>
+<div id="toast"></div>
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="dialog"><div class="dialogHeader"><span id="modalTitle">INSPECTION // LIVE CHANNEL</span><button id="closeModal">[ CLOSE ]</button></div><div class="dialogBody"><p id="modalDescription"></p><div class="modalGrid" id="modalGrid"></div><ul id="modalTasks"></ul></div></div></div>
+
+<div id="themeStudio" role="dialog" aria-modal="true" aria-labelledby="studioTitle">
+  <div class="studioShell">
+    <div class="studioHead"><h2 id="studioTitle">// CHROMA FORGE — THEME STUDIO</h2><button id="studioClose">[ RETURN TO CONSOLE ]</button></div>
+    <div class="studioBody">
+      <p class="studioIntro">SELECT A READY SCHEME OR TUNE EVERY COLOR. LIVE CHANGES AFFECT THE CANVAS, CURSOR, CHARTS, TERMINAL AND ALL MODALS. SAVED LOCALLY.</p>
+      <div class="studioSub">01 / PRESET SCHEMES <span id="activeScheme">SELECTED</span></div>
+      <div id="schemeGrid" class="schemeGrid"></div>
+      <div class="studioColumns">
+        <div><div class="studioSub">02 / CUSTOM COLOR CHANNELS</div><div id="colorGrid" class="colorGrid"></div></div>
+        <div><div class="studioSub">03 / INSPECTOR + PANEL PREVIEW</div>
+          <div class="themePreview"><div class="previewBar">[ LIVE / INSPECTION ] ◇</div><div class="previewInner"><div class="previewBox"><b>DNA SIGNAL ENGINE</b><em>&gt; HELIX / NOMINAL</em><div class="previewLine"></div></div><div class="previewBox"><b>VERIFIER / EVIDENCE</b><em>[✓] 13 / 15 PASSED</em><div class="previewLine"></div></div></div></div>
+          <div class="studioActions"><input id="schemeName" maxlength="28" placeholder="CUSTOM SCHEME NAME" aria-label="Custom scheme name"><button id="saveScheme">SAVE SCHEME</button><button id="resetScheme">RESET</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(()=>{'use strict';
+const canvas=document.getElementById('screen'),g=canvas.getContext('2d',{alpha:false}),$=id=>document.getElementById(id);
+const V={w:1600,h:900};let dpr=1,scale=1,ox=0,oy=0,viewW=0,viewH=0,last=performance.now(),sceneTime=0,lastMetrics=0,toastUntil=0;
+let palettes=[
+{name:'ACID / ULTRAVIOLET',lime:'#e0ff61',mag:'#d273fb',cyan:'#66f5ef',warm:'#ff875c',muted:'#818b7d',white:'#f3f4df'},
+{name:'NIGHT MARKET',lime:'#ffba57',mag:'#f465a5',cyan:'#85ffca',warm:'#fc7156',muted:'#9c897d',white:'#fff2de'},
+{name:'GHOST PHOSPHOR',lime:'#a8ff9d',mag:'#63e6dd',cyan:'#c3d98b',warm:'#f7ce74',muted:'#829b80',white:'#e9f4d8'},
+{name:'VIOLET UNDERGROUND',lime:'#b8adff',mag:'#ff75cd',cyan:'#89c8ff',warm:'#ffe088',muted:'#8e89a9',white:'#f5efff'}];
+const roles=['PLANNER','CODER','VERIFY','ANALYST','MEMORY','WATCHER','ROUTER','WORKER'];
+const stages=[
+ {name:'INTAKE',state:'PASS',tasks:['Register job envelope','Resolve project constraints','Load context signature','Lock version stamp']},
+ {name:'PLAN',state:'PASS',tasks:['Define bounded tasks','Attach tests before coding','Establish token budget','Build dependency graph']},
+ {name:'ROUTE',state:'PASS',tasks:['Compute permit allocation','Shard independent work','Set event wakeups','Dispatch to workers']},
+ {name:'EXEC',state:'LIVE',tasks:['Materialize scoped context','Generate bounded artifact','Emit completion event','Persist work evidence']},
+ {name:'VERIFY',state:'WAIT',tasks:['Run deterministic commands','Compare exact expected output','Record pass/fail evidence','Return precise repair delta']},
+ {name:'COMMIT',state:'WAIT',tasks:['Approve machine-verified output','Seal output artifacts','Checkpoint memory','Notify operator']}];
+const panes=[
+{id:'terminal',title:'01 / TTY COMMAND',tag:'INPUT / RAW',x:18,y:89,w:279,h:189,kind:'terminal'},
+{id:'topology',title:'02 / AGENT GRAPH',tag:'TOPOLOGY',x:18,y:288,w:279,h:218,kind:'topology'},
+{id:'radar',title:'03 / WATCHDOG',tag:'RADIAL MONITOR',x:18,y:516,w:279,h:142,kind:'radar'},
+{id:'spectrum',title:'04 / BAND ANALYZER',tag:'28 CHANNEL',x:18,y:668,w:279,h:160,kind:'spectrum'},
+{id:'workflow',title:'05 / EXECUTION SPINE',tag:'6-STAGE PIPELINE',x:307,y:89,w:713,h:154,kind:'workflow'},
+{id:'dna',title:'06 / DNA SIGNAL ENGINE',tag:'SEMANTIC DOUBLE-HELIX',x:307,y:253,w:713,h:291,kind:'dna'},
+{id:'signal',title:'07 / ELECTRIC BUS',tag:'SYNTHETIC PULSE',x:307,y:554,w:349,h:128,kind:'signal'},
+{id:'queue',title:'08 / QUEUE × LATENCY',tag:'TIME TRACE',x:666,y:554,w:354,h:128,kind:'queue'},
+{id:'verify',title:'09 / TEST ARRAY',tag:'EVIDENCE',x:307,y:692,w:230,h:136,kind:'verify'},
+{id:'heat',title:'10 / PERMIT HEAT',tag:'8 × 14',x:547,y:692,w:230,h:136,kind:'heat'},
+{id:'tasks',title:'11 / SUBTASK STACK',tag:'LIVE / 3 OF 5',x:787,y:692,w:233,h:136,kind:'tasks'},
+{id:'tokens',title:'12 / TOKEN PRESS',tag:'RESOURCE LEDGER',x:1030,y:89,w:266,h:186,kind:'tokens'},
+{id:'memory',title:'13 / MEMORY BANK',tag:'CTX / MEM / I-O',x:1306,y:89,w:276,h:186,kind:'memory'},
+{id:'workers',title:'14 / SHARD ARRAY',tag:'16 × 8',x:1030,y:285,w:266,h:239,kind:'workers'},
+{id:'tape',title:'15 / EVENT DECK',tag:'LATEST 08',x:1306,y:285,w:276,h:239,kind:'tape'},
+{id:'scheduler',title:'16 / SIGNAL ROUTER',tag:'EVENT-DRIVEN',x:1030,y:534,w:552,h:148,kind:'scheduler'},
+{id:'matrix',title:'17 / PROCESS MATRIX',tag:'BATCH / WORKER / ITEM',x:1030,y:692,w:552,h:136,kind:'matrix'}
+];
+const state={theme:0,paused:false,burst:0,fault:false,focus:'dna',stage:3,modal:false,
+ cursor:{x:790,y:420,inside:false,trail:[]},sparks:[],rx:Array(64).fill(0).map((_,i)=>23+Math.sin(i*.34)*7),q:Array(64).fill(0).map((_,i)=>42+Math.sin(i*.14)*10),
+ heat:Array.from({length:8},(_,r)=>Array.from({length:14},(_,i)=>(Math.sin(r*.9+i*.6)+1)*.4)),
+ bands:Array.from({length:28},(_,i)=>.24+.25*Math.sin(i*.7)),
+ nodes:Array.from({length:17},(_,i)=>({x:.10+(i*61%83)/100,y:.13+(i*47%72)/100,p:i*.4})),
+ blips:Array.from({length:10},(_,i)=>({r:.2+(i*23%60)/100,a:i*2.4,v:(i%2?1:-1)*(.08+.03*(i%4))})),
+ checks:[true,true,true,false,false],statusText:[],terminalBuffer:'',terminalActive:false,
+ stats:{tokens:18440,spent:2860,queue:46,latency:29,load:63,mem:72,io:44,permits:11,passed:13,failed:1,workers:16,events:2377},simStep:0};
+const P=()=>palettes[state.theme];
+const basePalettes=palettes.map(p=>({...p}));
+const colorFields=[['lime','PRIMARY / SIGNAL'],['mag','SECONDARY / GRAPH'],['cyan','DATA / TELEMETRY'],['warm','ALERT / ENERGY'],['muted','MUTED / LABELS'],['white','TEXT / INK'],['bg','BACKGROUND'],['surface','MODAL / SURFACE']];
+function getColor(p,key){return p[key]||({bg:'#010102',surface:'#08090b'})[key]}
+function validColor(v){return typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v)}
+function syncTheme(){const p=P(),root=document.documentElement;for(const[k,v]of Object.entries({accent:p.lime,secondary:p.mag,cyan:p.cyan,warm:p.warm,muted:p.muted,white:p.white,bg:getColor(p,'bg'),surface:getColor(p,'surface')}))root.style.setProperty('--skin-'+k,v);document.body.style.background=getColor(p,'bg')}
+function persist(){try{localStorage.setItem('dna.staticriot.chroma.v1',JSON.stringify({palettes,selected:state.theme}))}catch(e){}}
+function loadThemes(){try{const o=JSON.parse(localStorage.getItem('dna.staticriot.chroma.v1')||'null');if(o&&Array.isArray(o.palettes)){const custom=o.palettes.filter(p=>p&&typeof p.name==='string'&&['lime','mag','cyan','warm','muted','white'].every(k=>validColor(p[k]))).slice(4,20);palettes=[...basePalettes,...custom];state.theme=clamp(Number(o.selected)||0,0,palettes.length-1)}}catch(e){}syncTheme()}
+function openStudio(){renderStudio();$('themeStudio').classList.add('show')}
+function closeStudio(){$('themeStudio').classList.remove('show')}
+function renderStudio(){const grid=$('schemeGrid');grid.innerHTML='';palettes.forEach((p,i)=>{const btn=document.createElement('button');btn.className='scheme';btn.type='button';btn.setAttribute('aria-pressed',String(i===state.theme));const name=document.createElement('div');name.textContent=p.name;btn.appendChild(name);const sw=document.createElement('div');sw.className='swatches';['lime','mag','cyan','warm','muted','white'].forEach(key=>{const a=document.createElement('span');a.style.background=p[key];sw.appendChild(a)});btn.appendChild(sw);const sub=document.createElement('small');sub.textContent=i<basePalettes.length?'READY / PRESET':'CUSTOM / SAVED';btn.appendChild(sub);btn.onclick=()=>{state.theme=i;syncTheme();persist();renderStudio()};grid.appendChild(btn)});$('activeScheme').textContent=P().name;
+ const cg=$('colorGrid');cg.innerHTML='';colorFields.forEach(([key,label])=>{const row=document.createElement('label');row.className='colorRow';const cap=document.createElement('span');cap.textContent=label;const inp=document.createElement('input');inp.type='color';inp.value=getColor(P(),key);inp.setAttribute('aria-label',label);const code=document.createElement('code');code.textContent=inp.value.toUpperCase();inp.oninput=()=>{if(state.theme<basePalettes.length){palettes.push({...P(),name:'UNSAVED / CUSTOM'});state.theme=palettes.length-1}P()[key]=inp.value;code.textContent=inp.value.toUpperCase();syncTheme();persist();renderSchemeSelection()};row.append(cap,inp,code);cg.appendChild(row)});
+ }
+function renderSchemeSelection(){const grid=$('schemeGrid');if(grid.children.length!==palettes.length){const focused=document.activeElement;renderStudio();return}Array.from(grid.children).forEach((el,i)=>{el.setAttribute('aria-pressed',String(i===state.theme));let stripes=el.querySelectorAll('.swatches span');['lime','mag','cyan','warm','muted','white'].forEach((k,j)=>stripes[j].style.background=palettes[i][k]);el.querySelector('div').textContent=palettes[i].name});$('activeScheme').textContent=P().name}
+
+const hex=(color,a=1)=>{let c=color.replace('#','');let n=parseInt(c,16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`};
+const rand=(a,b)=>a+Math.random()*(b-a),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function fit(){viewW=innerWidth;viewH=innerHeight;dpr=Math.min(2,devicePixelRatio||1);scale=Math.min(viewW/V.w,viewH/V.h);ox=(viewW-V.w*scale)/2;oy=(viewH-V.h*scale)/2;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);canvas.style.width=viewW+'px';canvas.style.height=viewH+'px'}
+function coords(e){return{x:(e.clientX-ox)/scale,y:(e.clientY-oy)/scale}}
+function box(x,y,w,h,color){g.fillStyle=color;g.fillRect(x,y,w,h)}
+function line(x,y,x2,y2,c,w=1){g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(x,y);g.lineTo(x2,y2);g.stroke()}
+function txt(s,x,y,size=11,color=P().white,align='left',weight=500){g.fillStyle=color;g.textAlign=align;g.font=`${weight} ${size}px Consolas,Menlo,monospace`;g.fillText(s,x,y)}
+function bar(x,y,w,h,v,c,edge=true){box(x,y,w,h,'#202322');box(x,y,w*clamp(v,0,1),h,c);if(edge)g.strokeStyle=hex(c,.38),g.strokeRect(x+.5,y+.5,w-1,h-1)}
+function crop(p,fn){g.save();g.beginPath();g.rect(p.x+2,p.y+26,p.w-4,p.h-28);g.clip();fn();g.restore()}
+function hatch(x,y,w,h,c='#ffffff'){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();for(let k=-h;k<w+h;k+=8)line(x+k,y+h,x+k+h,y,hex(c,.13));g.restore()}
+function panel(p){let c=P();box(p.x,p.y,p.w,p.h,'#060808');g.strokeStyle=state.focus===p.id?hex(c.lime,.94):'#323735';g.lineWidth=state.focus===p.id?2:1;g.strokeRect(p.x+.5,p.y+.5,p.w-1,p.h-1);
+ box(p.x,p.y,4,p.h,state.focus===p.id?c.lime:hex(c.lime,.44));box(p.x+5,p.y+1,p.w-6,23,'#121616');box(p.x+5,p.y+23,p.w-6,1,hex(c.lime,.55));
+ txt(p.title,p.x+13,p.y+16,11,c.white,'left',700);txt(p.tag,p.x+p.w-12,p.y+16,8,c.lime,'right',600);
+ if(state.focus===p.id){box(p.x+p.w-38,p.y+24,28,2,c.lime);box(p.x+p.w-14,p.y+p.h-14,8,8,c.lime)}
+}
+function header(){let c=P();box(18,13,1564,65,'#060808');g.strokeStyle=c.lime;g.lineWidth=2;g.strokeRect(18.5,13.5,1563,64);box(18,13,9,65,c.lime);box(27,13,249,65,'#111315');
+ txt('DNA // STATIC RIOT',42,40,19,c.white,'left',900);txt('UNDERGROUND OPERATIONS  //  RUNTIME 0.9',43,62,9,c.lime,'left',600);
+ const stats=[['MODE',state.paused?'HALT':'RUN'],['LOAD',`${Math.round(state.stats.load)}%`],['TOKENS',state.stats.tokens.toLocaleString()],['QUEUE',state.stats.queue],['TESTS',`${state.stats.passed}/15`],['WORKERS','16'],['SYS',state.fault?'FAULT':'NOMINAL']];
+ let x=289;for(const [key,val] of stats){let w=key==='TOKENS'?112:100;box(x,27,w,36,'#0d1211');box(x,27,3,36,key==='SYS'&&state.fault?c.warm:c.mag);txt(key,x+10,39,9,c.muted,'left',700);txt(String(val),x+10,55,13,key==='SYS'&&state.fault?c.warm:c.white,'left',700);x+=w+8;}
+ txt(`UPLINK / ${c.name}`,1096,57,11,c.lime,'left',800);txt('LOCAL / SIMULATION',1297,57,9,c.muted,'left',600);
+}
+function drawTerminal(p,t){crop(p,()=>{let c=P();for(let i=0;i<state.statusText.length;i++){let y=p.y+42+i*15;if(y>p.y+p.h-18)break;txt(state.statusText[i],p.x+13,y,10,i===0?c.white:i%4===0?c.warm:c.muted)}
+ const y=p.y+p.h-16;box(p.x+12,y-12,p.w-24,14,'#121814');txt('root@dna:/ops$',p.x+16,y,10,c.lime);txt(state.terminalBuffer+(Math.floor(t*2)%2?'█':' '),p.x+109,y,10,c.white);
+ })}
+function drawTopology(p,t){crop(p,()=>{let c=P(),pts=state.nodes.map(n=>({x:p.x+15+n.x*(p.w-30),y:p.y+23+n.y*(p.h-48)}));for(let i=0;i<pts.length;i++){for(let j=i+1;j<pts.length;j++){let d=Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y);if(d<104)line(pts[i].x,pts[i].y,pts[j].x,pts[j].y,hex(i%2?c.mag:c.cyan,(1-d/104)*.45));}}
+ pts.forEach((a,i)=>{box(a.x-2,a.y-2,5,5,i%4===0?c.lime:i%3===0?c.mag:c.cyan);if(i<8){let label=roles[i];txt(label,a.x+5,a.y-3,7,c.white)}});
+ txt('17 NODES  /  23 LINKS  /  TRAFFIC '+Math.round(state.stats.load*.41),p.x+11,p.y+p.h-9,9,c.muted)})}
+function drawRadar(p,t){crop(p,()=>{let c=P(),cx=p.x+138,cy=p.y+83,r=47;for(let i=1;i<4;i++){g.strokeStyle=hex(c.lime,.16);g.beginPath();g.arc(cx,cy,r*i/3,0,Math.PI*2);g.stroke()}
+ line(cx-r,cy,cx+r,cy,hex(c.lime,.21));line(cx,cy-r,cx,cy+r,hex(c.lime,.21));let ang=t*1.8;line(cx,cy,cx+Math.cos(ang)*r,cy+Math.sin(ang)*r,hex(c.lime,.94),2);
+ state.blips.forEach((b,i)=>{let px=cx+Math.cos(b.a+t*b.v)*b.r*r,py=cy+Math.sin(b.a+t*b.v)*b.r*r;box(px-2,py-2,4,4,i%3===0?c.warm:c.mag)});
+ txt('16  ACTIVE',p.x+12,p.y+49,10,c.white);txt('2   WATCH',p.x+12,p.y+62,10,c.muted);txt('SWEEP',p.x+p.w-17,p.y+p.h-9,9,c.lime,'right')})}
+function drawSpectrum(p,t){crop(p,()=>{let c=P(),n=state.bands.length,gap=3,bw=(p.w-28-(n-1)*gap)/n,bottom=p.y+p.h-16,top=p.y+37;state.bands.forEach((v,i)=>{let h=(bottom-top)*v,x=p.x+14+i*(bw+gap);box(x,bottom-h,bw,h,i%5===0?c.mag:i%3===0?c.cyan:c.lime);box(x,Math.max(top,bottom-h-5),bw,2,c.white)});
+ txt('FREQ [ 40Hz - 20kHz ]',p.x+11,p.y+p.h-6,8,c.muted)})}
+function drawWorkflow(p,t){crop(p,()=>{let c=P();txt('JOB 047-AX / EVENT-DRIVEN / ACYCLIC ORDER',p.x+16,p.y+46,10,c.muted);let left=p.x+49,right=p.x+p.w-47,y=p.y+82,step=(right-left)/5;line(left,y,right,y,hex(c.lime,.22),2);
+ stages.forEach((s,i)=>{let x=left+i*step,active=i===state.stage;box(x-13,y-13,26,26,active?c.lime:'#1b2220');g.strokeStyle=active?c.lime:hex(i<state.stage?c.cyan:c.mag,.85);g.lineWidth=2;g.strokeRect(x-13,y-13,26,26);txt(String(i+1).padStart(2,'0'),x,y+4,11,active?'#040604':c.white,'center',800);txt(s.name,x,y+33,10,active?c.lime:c.white,'center',800);txt(s.state,x,y+47,9,i<=state.stage?c.cyan:c.muted,'center');if(i<5){let u=(t*.53+i*.19)%1;box(x+18+u*(step-36),y-2,7,4,c.mag)}});
+ box(p.x+16,p.y+p.h-7,Math.max(8,(p.w-32)*(.58+.07*Math.sin(t*.8))),2,c.lime);txt('CRITICAL PATH  /  CLICK A STAGE TO INSPECT',p.x+15,p.y+p.h-12,9,c.muted)})}
+function drawDNA(p,t){crop(p,()=>{let c=P(),cx=p.x+p.w*.5,cy=p.y+p.h*.53,yy0=p.y+38,yy1=p.y+p.h-16,amp=72;let strandA=[],strandB=[];
+ // create a cinematic long horizontal helix with depth, a stronger contrast from the earlier vertical one
+ let N=192;for(let i=0;i<N;i++){let u=i/(N-1),x=p.x+22+u*(p.w-44),ang=u*8*Math.PI+t*1.55;strandA.push({x,y:cy+Math.sin(ang)*amp,z:Math.cos(ang)});strandB.push({x,y:cy-Math.sin(ang)*amp,z:-Math.cos(ang)})}
+ // subtle code rain columns behind the helix
+ for(let k=0;k<26;k++){let x=p.x+16+k*27;for(let j=0;j<6;j++){let y=p.y+40+((t*28+k*31+j*24)%(p.h-52));txt(((k+j*3)%2?'0':'1'),x,y,9,hex(c.cyan,.1+(j%3)*.025))}}
+ // cross-links go behind front strand
+ for(let i=0;i<N;i+=5){let a=strandA[i],b=strandB[i];line(a.x,a.y,b.x,b.y,hex(c.lime,.22+.14*Math.abs(a.z)),1.25);}
+ const drawStrand=(s,color)=>{for(let i=1;i<N;i++){let a=s[i-1],b=s[i],depth=(a.z+b.z)*.25+.65;line(a.x,a.y,b.x,b.y,hex(color,.20+depth*.68),1.2+depth*1.7)}for(let i=0;i<N;i+=3){let a=s[i],depth=(a.z+1)*.5;box(a.x-1.6,a.y-1.6,3+depth*2,3+depth*2,hex(color,.3+depth*.7));}}
+ drawStrand(strandB,c.mag);drawStrand(strandA,c.cyan);
+ for(let i=0;i<8;i++){let u=(t*.10+i/8)%1,x=p.x+22+u*(p.w-44),ang=u*8*Math.PI+t*1.55,y=cy+Math.sin(ang)*amp;box(x-5,y-5,10,10,c.lime);line(x-9,y,x+9,y,hex(c.lime,.6))}
+ // measurement rulers / signals beneath
+ line(p.x+17,p.y+p.h-25,p.x+p.w-17,p.y+p.h-25,hex(c.lime,.33));for(let x=p.x+22;x<p.x+p.w-22;x+=19)line(x,p.y+p.h-27,x,p.y+p.h-22,hex(c.lime,.45));
+ txt('DOUBLE STRAND / CONTEXT CONTINUITY',p.x+20,p.y+42,10,c.white,'left',800);txt('SEQUENCE 0x7C6   LINK 99.94%   CARRIERS 08',p.x+20,p.y+p.h-9,9,c.muted);
+ txt('↑ SEMANTIC TRANSFER',p.x+p.w-18,p.y+41,9,c.lime,'right',700)
+ })}
+function drawSignal(p,t){crop(p,()=>{let c=P(),x0=p.x+12,x1=p.x+p.w-13,w=x1-x0,m=p.y+80;for(let i=0;i<4;i++)line(x0,p.y+39+i*20,x1,p.y+39+i*20,hex(c.muted,.18));
+ for(let z=0;z<3;z++){g.beginPath();g.lineWidth=z===0?1.9:1;g.strokeStyle=z===0?c.lime:z===1?c.mag:c.cyan;for(let j=0;j<=w;j++){let u=j/w,spike=Math.exp(-Math.pow((((u-(t*.17%1))+1)%1-.5)*45,2))*(z===0?34:0),y=m+(z-1)*24+Math.sin(u*22+t*(1.8+z*.4))* (z===0?6:10)-spike;if(j===0)g.moveTo(x0+j,y);else g.lineTo(x0+j,y)}g.stroke()}
+ txt('PULSE 70 BPM',p.x+13,p.y+43,9,c.lime);txt('BUS NOMINAL',p.x+p.w-13,p.y+p.h-12,9,c.muted,'right')})}
+function drawQueue(p,t){crop(p,()=>{let c=P(),x=p.x+14,y=p.y+41,w=p.w-28,h=p.h-58;for(let k=0;k<=3;k++)line(x,y+k*h/3,x+w,y+k*h/3,hex(c.muted,.17));let make=(arr,col,fac)=>{g.beginPath();g.lineWidth=1.8;g.strokeStyle=col;arr.forEach((v,i)=>{let px=x+i/(arr.length-1)*w,py=y+h-(v/fac)*h;if(i===0)g.moveTo(px,py);else g.lineTo(px,py)});g.stroke()};make(state.q,c.lime,100);make(state.rx,c.mag,70);
+ txt('Q '+state.stats.queue+'  /  LAT '+state.stats.latency+'ms',p.x+13,p.y+p.h-11,9,c.white)})}
+function drawVerify(p,t){crop(p,()=>{let c=P();['CONTRACT','GOLDENS','SCHEMA','RUNTIME','REPAIR'].forEach((s,i)=>{let y=p.y+42+i*17;txt(s,p.x+10,y,9,c.muted);bar(p.x+86,y-8,p.w-97,7,clamp(.93-i*.09+.035*Math.sin(t*1.5+i),0,1),i===4?c.warm:c.lime,false)});txt('13 PASSED / 1 FAILED / 1 PENDING',p.x+11,p.y+p.h-7,9,c.white)})}
+function drawHeat(p,t){crop(p,()=>{let c=P(),gap=3,cw=(p.w-25-13*gap)/14,ch=(p.h-42-7*gap)/8;state.heat.forEach((row,i)=>row.forEach((v,j)=>{let color=v>.73?c.warm:v>.44?c.mag:c.cyan;box(p.x+12+j*(cw+gap),p.y+30+i*(ch+gap),cw,ch,hex(color,.14+v*.74))}));txt('MEM / PERMITS / LOCK PRESSURE',p.x+11,p.y+p.h-7,8,c.muted)})}
+function drawTasks(p,t){crop(p,()=>{let c=P();['validate scope','parse worker diff','execute tests','repair failure','seal checkpoint'].forEach((s,i)=>{let y=p.y+42+i*18,done=state.checks[i];g.strokeStyle=done?c.lime:c.warm;g.strokeRect(p.x+12,y-8,9,9);if(done)box(p.x+14,y-6,5,5,c.lime);txt(s,p.x+27,y,9,done?c.white:c.warm)});txt('CLICK ROW TO TOGGLE',p.x+11,p.y+p.h-7,8,c.muted)})}
+function drawTokens(p,t){crop(p,()=>{let c=P();txt('AVAILABLE',p.x+13,p.y+49,10,c.muted);txt(state.stats.tokens.toLocaleString(),p.x+13,p.y+77,30,c.white,'left',900);txt('SPENT  '+state.stats.spent.toLocaleString(),p.x+13,p.y+100,10,c.mag);let x=p.x+13,w=p.w-27;bar(x,p.y+113,w,13,state.stats.tokens/26000,c.lime);
+ for(let i=0;i<17;i++){let v=(.35+.65*Math.abs(Math.sin(t*.9+i*.62)))*(i<12?1:.45);box(x+i*(w/17),p.y+134+27*(1-v),w/17-3,27*v,i%3===0?c.mag:c.lime)}
+ })}
+function drawMemory(p,t){crop(p,()=>{let c=P(),rows=[['CTX PAGE','183k'],['MEM OCC','72%'],['I/O BURST','44%'],['RETENTION','88%'],['CACHE HIT','96%'],['LOCKS','02'],['WAKE EVT','337']];rows.forEach(([label,v],i)=>{let y=p.y+41+i*19;if(i%2===0)box(p.x+11,y-12,p.w-22,18,'#131515');txt(label,p.x+17,y,10,c.muted);txt(v,p.x+p.w-16,y,11,i===2?c.mag:c.white,'right',800)});})}
+function drawWorkers(p,t){crop(p,()=>{let c=P(),cols=16,rows=8,dx=14,dy=19;for(let r=0;r<rows;r++)for(let k=0;k<cols;k++){let x=p.x+12+k*15,y=p.y+38+r*21,active=Math.sin(t*(1.2+(k%5)*.11)+k*.75+r*.8)>.08,fill=!active?'#191c1b':(k%5===0?c.mag:k%3===0?c.cyan:c.lime);box(x,y,11,14,fill)}
+ txt('16 SHARDS × 8 ITEMS',p.x+13,p.y+p.h-26,9,c.muted);txt('PERMITS : 11 / 16   WAKE MODE: EVENT',p.x+13,p.y+p.h-11,9,c.white)})}
+function drawTape(p,t){crop(p,()=>{let c=P(),events=['[19:04:12] VERIFIER  13/15 PASS','[19:04:11] SHARD-04  COMPLETE','[19:04:11] ROUTER   WAKE 6/8','[19:04:10] MEMORY   WRITE 0xF1','[19:04:09] CODER    PATCH +42','[19:04:09] SCHED    DISPATCH','[19:04:08] ANALYST  CHECKPOINT','[19:04:08] LOCKS    02 OPEN'];events.forEach((s,i)=>{let y=p.y+45+i*21;if(i%2===0)box(p.x+11,y-12,p.w-23,19,'#111414');txt(s,p.x+16,y,10,i<2?c.white:i===4?c.mag:c.muted)});
+ let tt=(t*37)%p.w;box(p.x+9+tt,p.y+p.h-20,30,2,c.mag)})}
+function drawScheduler(p,t){crop(p,()=>{let c=P(),labels=['ON EVENT','WAKE WORKER','RUN CHECK','COMMIT','IDLE / SLEEP'];let x=p.x+16,y=p.y+53,dx=(p.w-34)/5;for(let i=0;i<5;i++){let xx=x+i*dx;box(xx,y-16,dx-12,47,i===2?'#252019':'#101714');g.strokeStyle=i===2?c.warm:hex(c.cyan,.56);g.strokeRect(xx+.5,y-15.5,dx-13,46);txt('0'+(i+1),xx+7,y-2,11,i===2?c.warm:c.cyan,'left',900);txt(labels[i],xx+7,y+17,9,c.white,'left',700);if(i<4){line(xx+dx-9,y+5,xx+dx+1,y+5,c.lime,2);box(xx+dx-2,y+2,4,6,c.lime)}}
+ txt('RUNTIME POLICY : 0 LLM POLLING  /  CALLBACK WAKE  /  MAX RETRY 3',p.x+16,p.y+p.h-17,10,c.lime);txt('NEXT WAKE / EVENT-AF-091',p.x+p.w-16,p.y+p.h-17,9,c.muted,'right')})}
+function drawMatrix(p,t){crop(p,()=>{let c=P(),head=['WORKER','SHARD','STAGE','CHECKS','TOKENS','STATE'],xs=[p.x+14,p.x+106,p.x+182,p.x+283,p.x+387,p.x+474];head.forEach((h,i)=>txt(h,xs[i],p.y+40,10,c.lime,'left',800));for(let r=0;r<4;r++){let y=p.y+59+r*17;if(r%2===0)box(p.x+9,y-12,p.w-18,17,'#121515');let row=[`W-${String(r+1).padStart(2,'0')}`,`B-${300+r}`,['EXEC','VERIFY','IDLE','PLAN'][r],['4/4','3/4','-','2/2'][r],''+(420+r*38),['PASS','ACTIVE','SLEEP','READY'][r]];row.forEach((v,i)=>txt(v,xs[i],y,10,i===5?(r===0?c.lime:r===1?c.warm:c.cyan):c.white))}
+ })}
+function footer(t){let c=P();box(18,838,1564,46,'#10130e');g.strokeStyle=hex(c.lime,.7);g.lineWidth=1;g.strokeRect(18.5,838.5,1563,45);
+ box(18,838,150,46,c.lime);txt('LIVE EVENT BUS',34,856,12,'#070807','left',900);txt('EPOCH '+String(state.simStep).padStart(6,'0'),34,872,9,'#171813');
+ g.save();g.beginPath();g.rect(183,840,1160,40);g.clip();const msg='  >> /scheduler.notify  >> /worker.wake  >> /verifier.pass  >> /memory.flush  >> /runtime.sleep  >> /shard-16.complete  >> /model.permit.release  >> ';let x=1300-(t*120%1750);for(let k=-1;k<3;k++)txt(msg,x+k*1750,865,13,c.white);g.restore();
+ txt(`FRAMES ${Math.round(60)}  |  NO NETWORK  |  DEMO DATA`,1567,856,9,c.muted,'right');txt('` TERMINAL    / INSPECT PANELS    B TRAFFIC',1567,872,9,c.lime,'right')}
+function sparks(){state.sparks.forEach(s=>{box(s.x,s.y,Math.max(1,s.life*.09),Math.max(1,s.life*.09),hex(s.color,s.life/s.max));s.x+=s.vx;s.y+=s.vy;s.vx*=.99;s.vy*=.99;s.life-=1});state.sparks=state.sparks.filter(s=>s.life>0)}
+function cursor(t){let c=P(),m=state.cursor;if(!m.inside)return;state.cursor.trail.forEach(a=>{box(a.x-2,a.y-2,4,4,hex(c.mag,a.life/20*.65));a.life--});state.cursor.trail=state.cursor.trail.filter(a=>a.life>0);
+ let x=m.x,y=m.y,k=19,flash=.5+.5*Math.sin(t*6);g.strokeStyle=c.lime;g.lineWidth=1.5;g.strokeRect(x-16,y-16,32,32);line(x-k-8,y,x-5,y,c.lime);line(x+5,y,x+k+8,y,c.lime);line(x,y-k-8,x,y-5,c.lime);line(x,y+5,x,y+k+8,c.lime);
+ box(x-2,y-2,4,4,c.mag);txt(`${Math.round(x).toString().padStart(4,'0')}:${Math.round(y).toString().padStart(4,'0')}`,x+28,y-12,10,c.white);if(flash>.9)box(x-22,y+23,4,4,c.mag)}
+function scanline(t){box(0,0,1600,900,'rgba(0,0,0,.045)');for(let y=0;y<900;y+=5)box(0,y,1600,1,'rgba(255,255,255,.023)');box(0,(t*62)%900,1600,2,hex(P().lime,.045));}
+function draw(t){g.setTransform(dpr,0,0,dpr,0,0);box(0,0,viewW,viewH,'#000');g.setTransform(dpr*scale,0,0,dpr*scale,dpr*ox,dpr*oy);box(0,0,1600,900,'#000');
+ // angular circuit scratches
+ let c=P();for(let i=0;i<32;i++){let x=i*52,y=(i*73)%900;line(x,y,x+14,y,hex(c.lime,.095));}
+ header();const map={terminal:drawTerminal,topology:drawTopology,radar:drawRadar,spectrum:drawSpectrum,workflow:drawWorkflow,dna:drawDNA,signal:drawSignal,queue:drawQueue,verify:drawVerify,heat:drawHeat,tasks:drawTasks,tokens:drawTokens,memory:drawMemory,workers:drawWorkers,tape:drawTape,scheduler:drawScheduler,matrix:drawMatrix};
+ for(let p of panes){panel(p);map[p.kind](p,t)}footer(t);sparks();scanline(t);cursor(t)}
+function log(s){state.statusText.unshift(s);state.statusText=state.statusText.slice(0,9)}
+function simulate(dt,t){if(state.paused)return;state.burst=Math.max(0,state.burst-dt*.8);if(t-lastMetrics>.085){lastMetrics=t;state.simStep++;let m=state.stats;m.load=clamp(m.load+rand(-2,2)+(.62*100-m.load)*.03,28,96);m.tokens=clamp(m.tokens+Math.round(rand(-70,35))-state.burst*64,500,26000);m.queue=Math.round(clamp(m.queue+rand(-2,2)+state.burst*2,14,95));m.latency=Math.round(clamp(m.latency+rand(-2,2)+state.burst,10,62));m.mem=clamp(m.mem+rand(-.6,.6),34,92);m.io=clamp(m.io+rand(-1.5,1.5),12,96);m.events+=Math.round(rand(0,3));state.q.push(m.queue);state.q.shift();state.rx.push(m.latency);state.rx.shift();state.bands=state.bands.map((v,i)=>clamp(v+rand(-.12,.12)+(.35+.25*Math.sin(t*2+i*.5)-v)*.12,.02,.96));state.heat=state.heat.map((row,i)=>row.map((v,j)=>clamp(v+rand(-.085,.085)+(.35+.25*Math.sin(t+i*.7+j*.5)-v)*.08,.02,.99)));}
+ state.nodes.forEach((n,i)=>{n.x=clamp(n.x+.0002*Math.sin(t*.5+i*3),.06,.94);n.y=clamp(n.y+.00025*Math.cos(t*.45+i),.05,.95)});
+ if(Math.random()<dt*(1.4+state.burst*10)) {let p=panes[(Math.random()*panes.length)|0];state.sparks.push({x:p.x+p.w*.5,y:p.y+p.h*.45,vx:rand(-1.5,1.5),vy:rand(-2,2),color:Math.random()>.5?P().lime:P().mag,life:rand(8,22),max:22})}
+ if(Math.random()<dt*.72){const verbs=['route','wake','pass','seal','yield','attach','enqueue','commit'];log(`[${String(Math.floor(t)%99).padStart(2,'0')}] ${roles[(Math.random()*roles.length)|0]}.${verbs[(Math.random()*verbs.length)|0]} OK`)}
+}
+function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(toastUntil);toastUntil=setTimeout(()=>$('toast').classList.remove('show'),2000)}
+function openModal(id){let c=P();let p=panes.find(v=>v.id===id);if(!p)return;state.focus=id;state.modal=true;$('modalTitle').textContent=`${p.title} // LIVE INSPECTION`;
+const descriptions={terminal:'Operator teletype and command stream. Click the terminal panel or press ` to enter commands. The simulation executes local deterministic actions.',topology:'Coordination topology for the agent network, showing active roles and inter-agent links.',radar:'Worker/watchdog sweep with moving contacts. The blips are illustrative event activity, not GPS locations.',spectrum:'Frequency-domain activity sketch for route, memory, and workload signals.',workflow:'Hierarchical orchestration, stage status, and deterministic verification handoffs. Inspect an individual stage directly.',dna:'Animated dual-strand signal engine with front/back depth, carrier packets, sequence ruler and live semantic indicators.',signal:'Multiplexed runtime waveform traces, including a health pulse and secondary signal layers.',queue:'Queue and latency plotted as two independent moving time series.',verify:'Deterministic acceptance evidence: tests and repairs should be backed by machine-executed outputs.',heat:'Thermal pressure view for memory occupancy, concurrency permits and lock pressure.',tasks:'Current step checklist. Clicking a row checks or unchecks that task.',tokens:'Resource reserve, expenditure, and live allocation bars for the DNA runtime.',memory:'Memory pressure, context budget, and cache retention ledger.',workers:'High-volume shard matrix. Every square stands for a worker/item combination.',tape:'Chronological operational event feed for humans monitoring the runtime.',scheduler:'Deterministic event-driven supervisor. Workers sleep until a trigger, rather than polling an LLM.',matrix:'Job-to-shard-to-worker mapping, acceptance counts, spending, and current state.'};
+$('modalDescription').textContent=descriptions[id];const values=[['CHANNEL',id.toUpperCase()],['RUNTIME',state.paused?'HALTED':'NOMINAL'],['QUEUE',state.stats.queue],['TOKENS',state.stats.tokens.toLocaleString()],['ACCEPTANCE',`${state.stats.passed} / 15`],['PERMITS',`${state.stats.permits}/16`]];
+$('modalGrid').innerHTML=values.map(([a,b])=>`<div class="modalCell"><b>${a}</b><span>${b}</span></div>`).join('');
+let lines=id==='workflow'?stages.map((s,i)=>`${i===state.stage?'▶':'○'} ${String(i+1).padStart(2,'0')} · ${s.name} · ${s.state}`):id==='tasks'?['Validate scope','Parse worker diff','Execute acceptance','Repair failed output','Seal checkpoint']:id==='scheduler'?['Receive event','Validate state transition','Wake permitted worker','Run deterministic check','Commit and sleep']:['Bounded worker ownership','Event-triggered wakeups; no status polling','Machine-checkable acceptance','Versioned checkpoint and evidence','Operator escalation only when necessary'];
+$('modalTasks').innerHTML=lines.map(s=>`<li>${s}</li>`).join('');$('modal').classList.add('show');}
+function closeModal(){state.modal=false;$('modal').classList.remove('show')}
+function command(s){let [c,arg]=s.trim().toLowerCase().split(/\s+/);if(!c)return;log(`$ ${s}`);switch(c){case 'help':log('help status burst spend 500 fault repair tick stage 4 theme clear');break;case 'status':log(`Q=${state.stats.queue} TOK=${state.stats.tokens} V=${state.stats.passed}/15`);break;case 'burst':burst();break;case 'spend':{let amt=clamp(Number(arg)||250,0,state.stats.tokens);state.stats.tokens-=amt;state.stats.spent+=amt;log(`SPENT ${amt} TOKENS`);break}case 'fault':state.fault=true;state.stats.failed++;log('FAULT INJECTED / 01 UNRESOLVED');break;case 'repair':state.fault=false;state.stats.passed=Math.min(15,state.stats.passed+1);log('FAULT REPAIRED / EVIDENCE PERSISTED');break;case 'tick':state.stats.events++;log('SCHEDULER TICK / OK');break;case 'stage':{let n=parseInt(arg,10)-1;if(n>=0&&n<6){state.stage=n;openStage(n)}else log('STAGE 1..6 REQUIRED');break}case 'theme':openStudio();break;case 'clear':state.statusText=[];break;default:log(`UNKNOWN: ${c}`)}}
+function burst(){state.burst=1.7;log('TRAFFIC BURST / 16 SHARDS');for(let i=0;i<50;i++)state.sparks.push({x:663+rand(-210,210),y:401+rand(-90,90),vx:rand(-4,4),vy:rand(-3,3),life:rand(10,40),max:40,color:i%3===0?P().mag:P().lime})}
+function openStage(i){let p=panes.find(p=>p.id==='workflow');state.focus='workflow';state.modal=true;$('modalTitle').textContent=`STAGE ${i+1} // ${stages[i].name} // ${stages[i].state}`;$('modalDescription').textContent=`Stage ${i+1} of 6 in DNA's deterministic job lifecycle. Each bounded task is validated by runtime checks, not by an agent's self-report.`;$('modalGrid').innerHTML=[['STAGE',stages[i].name],['STATE',stages[i].state],['OWNER',roles[Math.min(i,roles.length-1)]],['JOB','DNA-047-AX']].map(([a,b])=>`<div class="modalCell"><b>${a}</b><span>${b}</span></div>`).join('');$('modalTasks').innerHTML=stages[i].tasks.map((s,j)=>`<li>${j<2?'[✓]':'[ ]'} ${s}</li>`).join('');$('modal').classList.add('show')}
+function click(e){if(state.modal)return;const{x,y}=coords(e);const p=panes.find(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);if(!p)return;state.focus=p.id;
+ if(p.id==='terminal'){state.terminalActive=true;toast('TYPE COMMAND  /  ENTER TO RUN  /  ESC TO CANCEL');return}
+ if(p.id==='workflow'){let left=p.x+49,step=(p.w-94)/5,yc=p.y+82,idx=Math.round((x-left)/step);if(Math.abs(y-yc)<55){openStage(clamp(idx,0,5));return}}
+ if(p.id==='tasks'){let i=Math.floor((y-p.y-32)/18);if(i>=0&&i<5){state.checks[i]=!state.checks[i];log(`CHECKLIST ${i+1} = ${state.checks[i]?'DONE':'TODO'}`);return}}
+ openModal(p.id)}
+canvas.addEventListener('pointermove',e=>{let a=coords(e);if(a.x>=0&&a.x<=1600&&a.y>=0&&a.y<=900){let m=state.cursor;m.x=a.x;m.y=a.y;m.inside=true;if(Math.random()>.5)m.trail.push({x:a.x,y:a.y,life:20});if(m.trail.length>25)m.trail.shift()}else state.cursor.inside=false});canvas.addEventListener('pointerleave',()=>state.cursor.inside=false);canvas.addEventListener('click',click);
+$('closeModal').onclick=closeModal;$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});$('pause').onclick=()=>{state.paused=!state.paused;$('pause').textContent=state.paused?'RUN [P]':'HALT [P]';log(state.paused?'RUNTIME PAUSED':'RUNTIME RESUMED')};$('burst').onclick=burst;$('theme').onclick=openStudio;$('studioClose').onclick=closeStudio;$('themeStudio').onclick=e=>{if(e.target===$('themeStudio'))closeStudio()};$('saveScheme').onclick=()=>{const name=$('schemeName').value.trim()||'CUSTOM / '+(palettes.length+1);const p={...P(),name};palettes.push(p);state.theme=palettes.length-1;syncTheme();persist();renderStudio();toast('SAVED / '+name)};$('resetScheme').onclick=()=>{state.theme=0;palettes=basePalettes.map(p=>({...p}));syncTheme();persist();renderStudio()};$('help').onclick=()=>toast('CLICK PANEL • ` COMMAND • P HALT • B BURST • T THEME');
+window.addEventListener('keydown',e=>{if($('themeStudio').classList.contains('show')){if(e.key==='Escape')closeStudio();return}if(state.modal){if(e.key==='Escape')closeModal();return}if(state.terminalActive){if(e.key==='Enter'){command(state.terminalBuffer);state.terminalBuffer='';state.terminalActive=false}else if(e.key==='Escape'){state.terminalBuffer='';state.terminalActive=false}else if(e.key==='Backspace')state.terminalBuffer=state.terminalBuffer.slice(0,-1);else if(e.key.length===1&&state.terminalBuffer.length<24)state.terminalBuffer+=e.key;e.preventDefault();return}if(e.key==='`'||e.key==='/'){state.terminalActive=true;e.preventDefault()}else if(e.key.toLowerCase()==='p')$('pause').click();else if(e.key.toLowerCase()==='b')burst();else if(e.key.toLowerCase()==='t')$('theme').click();else if(e.key==='Escape')closeModal()});
+function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;if(!state.paused)sceneTime+=dt;simulate(dt,sceneTime);draw(sceneTime);requestAnimationFrame(loop)}
+log('[INIT] DNA STATIC RIOT / SYSTEM READY');log('[PLAN] CRITICAL PATH / LOCKED');log('[VER] ACCEPTANCE 13/15');log('[MEM] CHECKPOINT / OK');log('[SYS] EVENT-DRIVEN WORKERS');window.addEventListener('resize',fit);loadThemes();fit();requestAnimationFrame(loop);
+})();
+</script></body></html>

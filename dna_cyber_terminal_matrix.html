@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DNA // CYBER TERMINAL MATRIX</title>
+<style>
+  :root{
+    --bg:#05070b;
+    --text:#e8fbff;
+    --soft:#93b7c7;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#020307;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+  body{background:radial-gradient(circle at 50% 18%,#0c111c 0,#06080d 44%,#020307 100%)}
+  #screen{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .toolbar{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:10}
+  .tool{
+    appearance:none;border:1px solid rgba(146,244,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.02));
+    color:#edfdff;border-radius:999px;padding:9px 12px;font:700 11px ui-monospace,Consolas,monospace;letter-spacing:.06em;cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 8px 20px rgba(0,0,0,.22)
+  }
+  .tool:hover{transform:translateY(-1px)}
+  .modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(1,8,14,0);backdrop-filter:blur(0);opacity:0;pointer-events:none;transition:.22s ease;z-index:20}
+  .modal.show{opacity:1;pointer-events:auto;background:rgba(1,8,14,.62);backdrop-filter:blur(10px)}
+  .modal::before,.modal::after{content:"";position:absolute;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .22s ease}
+  .modal::before{width:42vw;height:42vw;max-width:620px;max-height:620px;left:8%;top:8%;background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.14),rgba(111,247,255,.07) 28%,rgba(255,255,255,0) 62%)}
+  .modal::after{width:28vw;height:28vw;max-width:420px;max-height:420px;right:10%;bottom:12%;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.12),rgba(255,88,215,.05) 30%,rgba(255,255,255,0) 64%)}
+  .modal.show::before,.modal.show::after{opacity:1;animation:lensFloat 13s ease-in-out infinite}
+  .modal.show::after{animation-duration:16s;animation-direction:alternate}
+  @keyframes lensFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,-12px) scale(1.03)}}
+  .dialog{width:min(820px,calc(100vw - 32px));max-height:84vh;overflow:auto;border-radius:28px;border:1px solid rgba(146,244,255,.18);background:linear-gradient(180deg,rgba(7,14,21,.94),rgba(5,10,15,.90));padding:22px;position:relative;box-shadow:0 30px 120px rgba(0,0,0,.55),0 0 70px rgba(111,247,255,.07);transform:translateY(16px) scale(.98);opacity:0;transition:.22s ease}
+  .modal.show .dialog{transform:none;opacity:1}
+  .dialog::before{content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.01) 34%,rgba(255,255,255,0) 72%),radial-gradient(circle at 12% 10%,rgba(255,255,255,.12),rgba(255,255,255,0) 22%),radial-gradient(circle at 88% 12%,rgba(111,247,255,.08),rgba(255,255,255,0) 24%)}
+  .dialog > *{position:relative;z-index:1}
+  .dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .dialog h2{margin:0;font-size:16px;letter-spacing:.12em;text-transform:uppercase}
+  .close{appearance:none;border:1px solid rgba(146,244,255,.18);background:rgba(255,255,255,.05);color:#edfdff;border-radius:999px;padding:9px 13px;font:700 11px ui-monospace,Consolas,monospace;cursor:pointer}
+  .dialog p{color:#bdd0db;line-height:1.62;margin:12px 0 16px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .cell{padding:12px;border-radius:16px;border:1px solid rgba(146,244,255,.12);background:rgba(255,255,255,.02)}
+  .cell b{display:block;font:11px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#7df2ff;margin-bottom:6px}
+  .cell span{font:11px/1.5 ui-monospace,Consolas,monospace;color:#d6e8ef}
+  .list{list-style:none;margin:16px 0 0;padding:0}
+  .list li{padding:8px 0;border-bottom:1px solid rgba(146,244,255,.08);font:11px ui-monospace,Consolas,monospace;color:#d8e7ef}
+  .list li::before{content:"◇ ";color:#ffd56d}
+  @media (max-width:720px){ .grid{grid-template-columns:1fr} .toolbar{top:auto;bottom:10px;right:10px;flex-wrap:wrap;max-width:90vw;justify-content:flex-end} }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div class="toolbar">
+  <button class="tool" id="themeBtn">THEME</button>
+  <button class="tool" id="burstBtn">BURST</button>
+  <button class="tool" id="pauseBtn">PAUSE</button>
+</div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="dialog">
+    <header>
+      <h2 id="modalTitle">Panel Detail</h2>
+      <button class="close" id="closeModal">CLOSE</button>
+    </header>
+    <p id="modalText"></p>
+    <div class="grid" id="modalGrid"></div>
+    <ul class="list" id="modalList"></ul>
+  </div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('screen');
+  const ctx = canvas.getContext('2d');
+  const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalGrid = document.getElementById('modalGrid');
+  const modalList = document.getElementById('modalList');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  const themes = [
+    {name:'CYBER NEON', bg:'#06080d', panel:'rgba(8,12,18,.82)', line:'#72f7ff', line2:'#ff58d7', line3:'#ffd56d', soft:'#93b7c7', edge:'#e9feff'},
+    {name:'MINT OPS', bg:'#05080a', panel:'rgba(7,12,13,.82)', line:'#8bffe3', line2:'#7db8ff', line3:'#ffe593', soft:'#a9cec9', edge:'#efffff'},
+    {name:'CRIMSON ARC', bg:'#08060a', panel:'rgba(12,8,13,.84)', line:'#ff77a8', line2:'#77d2ff', line3:'#ffcc76', soft:'#ceb6c8', edge:'#fff6fb'}
+  ];
+
+  const state = {
+    theme:0,
+    paused:false,
+    burst:0,
+    W:0,H:0,tPrev:performance.now(),
+    tickerX:0,
+    layout:[],
+    hitRegions:[],
+    queueHistory:Array.from({length:64},()=>120+Math.random()*22),
+    latencyHistory:Array.from({length:64},()=>34+Math.random()*8),
+    spectrum:Array.from({length:28},()=>.2+Math.random()*0.7),
+    heat:Array.from({length:8},()=>Array.from({length:16},()=>Math.random())),
+    termLines:[],
+    particles:[],
+    workerBlips:Array.from({length:12},(_,i)=>({a:Math.random()*Math.PI*2,r:.15+Math.random()*.5,s:.0025+Math.random()*.004})),
+    topology:Array.from({length:18},()=>({x:.15+Math.random()*.7,y:.18+Math.random()*.62,vx:(Math.random()-.5)*.0015,vy:(Math.random()-.5)*.0015,t:Math.random()*6})),
+    pulsePhase:0,
+    metrics:{load:.63,tokens:4680,queue:184,verify:.91,latency:42,mem:61,io:74,workers:12,alerts:2,ctx:183,shards:7}
+  };
+
+  const panelMeta = {
+    header:{title:'DNA UPLINK',text:'High-level command strip: mode, runtime health, queue pressure, and operator controls.',grid:[['Mode','Live / Simulated'],['Canvas','2D retro FUI'],['Intent','Dense monitoring deck'],['Style','Cyberpunk terminal']],list:['Designed to compress top-level state without hiding the rest of the board.','Animated ticker gives a living command-center feel.']},
+    workflow:{title:'Workflow Ladder',text:'Primary DNA execution flow showing the general process from intake to ship. Pulses moving across links represent active orchestration traffic.',grid:[['Stages','Intake · Plan · Code · Verify · Memory · Ship'],['Active stage','Verify'],['Shards','7'],['Packets','Live']],list:['Nodes brighten when traffic peaks.','A low-brightness rail keeps the path visible even while idle.']},
+    pulse:{title:'Pulse Bus',text:'Central live signal surface. It mixes a heartbeat-like bus line, dual telemetry waves, and DNA system health framing.',grid:[['Heartbeat','Synthetic / alive'],['Waves','Dual band'],['Status','Stable'],['Burst boost','Enabled']],list:['Center hero panel for overall “life” of the system.','Bright pulse spikes respond to burst mode.']},
+    terminal:{title:'Terminal Feed',text:'Textual event stream for operators who want raw status lines instead of charts. Right-to-left motion on some tapes keeps the scene feeling active.',grid:[['Feed rate','Continuous'],['Log class','Mixed'],['Operator view','Condensed'],['Noise','Intentional retro texture']],list:['A terminal makes the UI feel grounded and practical.','Useful for surfacing quick action summaries.']},
+    topology:{title:'Agent Topology',text:'Loose topology sketch showing planner, coder, verifier, memory, watcher, and task shards. Node motion is intentionally subtle, more like live circuitry than a physics demo.',grid:[['Nodes','18'],['Traffic','Adaptive'],['Shape','Loose mesh'],['Purpose','Relation view']],list:['Connection flashes indicate message flow.','Soft drift keeps the graph alive without becoming chaotic.']},
+    tokens:{title:'Token Reservoir',text:'A pressure-style display for token usage and reserves. Bars and cells move independently to avoid dead stillness.',grid:[['Reserve',()=>Math.round(state.metrics.tokens)],['Drain','Burst-sensitive'],['Warning level','Soft amber'],['Role','Resource pressure']],list:['Should make token usage feel like a physical resource.','High bursts visibly increase movement elsewhere in the board.']},
+    verify:{title:'Verifier Array',text:'Mini bars for test health, validation, acceptance status, and confidence. Bright bars imply machine-checkable success.',grid:[['Acceptance',()=>Math.round(state.metrics.verify*100)+'%'],['Checks','14/15'],['Signal','Strong'],['Bias','Deterministic']],list:['Inspired by lab hardware more than modern SaaS widgets.','Good spot for real future verifier metrics.']},
+    queue:{title:'Queue / Latency',text:'Dual-history pane comparing queue count and latency over time.',grid:[['Queue',()=>Math.round(state.metrics.queue)],['Latency',()=>Math.round(state.metrics.latency)+' ms'],['Window','64 ticks'],['Smoothing','Soft']],list:['One line keeps backlog visible.','Second line helps separate speed from load.']},
+    memory:{title:'CTX / MEM / IO',text:'Compact table-like pane for context, memory, I/O, and retention figures. Dense by design.',grid:[['CTX',()=>Math.round(state.metrics.ctx)+'k'],['MEM',()=>Math.round(state.metrics.mem)+'%'],['I/O',()=>Math.round(state.metrics.io)+'%'],['Retention','88%']],list:['Small tables are classic command-center UX.','Pairs well with broader visual panels.']},
+    heat:{title:'Permit Heat',text:'Heat tiles for memory pressure, permit usage, and minor runtime hotspots.',grid:[['Grid','8 × 16'],['Heat','Moderate'],['Decay','Slow'],['Focus','Pressure mapping']],list:['A heat panel adds density without needing labels everywhere.','Helps break up the board with a different visual grammar.']},
+    radar:{title:'Worker Radar',text:'Circular sweep to show workers, watchers, and anomalies entering orbit.',grid:[['Workers',()=>Math.round(state.metrics.workers)],['Anomalies',()=>Math.round(state.metrics.alerts)],['Sweep','Continuous'],['Interpretation','Approximate']],list:['Retro radar remains one of the most readable sci-fi motifs.','Blips pulse to hint at worker activity.']},
+    spectrum:{title:'Telemetry Spectrum',text:'Animated vertical analyzers for signal energy, route noise, and monitor activity.',grid:[['Bands','28'],['Motion','Independent'],['Peak hold','Soft'],['Visual role','Ambient telemetry']],list:['Great filler panel because it gives constant life to the board.','Lets color accents breathe.']},
+    miniFlow:{title:'Shard Checklist',text:'Micro progress panel for the internal checklist of the current workflow stage.',grid:[['Current stage','Verify'],['Checklist items','5'],['Completed','4'],['Escalation','None']],list:['Small process panels make the screen feel more purposeful.','Good candidate for future per-stage modal drilldowns.']},
+    alerts:{title:'Alert Tape',text:'Short-form alert tape for state changes, warnings, and transitions.',grid:[['Level','Low'],['Current count',()=>Math.round(state.metrics.alerts)],['Tape mode','Looping'],['Priority','Mixed']],list:['Tiny, dense message panes are very DNA-friendly.','Useful for adding urgency without covering the whole scene.']},
+    ticker:{title:'Action Ribbon',text:'Bottom action ribbon pushing right-to-left updates across the whole screen.',grid:[['Direction','Right → Left'],['Purpose','Ambient action feed'],['Compression','High'],['Feel','Terminal / market tape hybrid']],list:['A moving ribbon instantly makes a static board feel operational.','Can later be wired to real event JSON.']}
+  };
+
+  function theme(){ return themes[state.theme]; }
+  function rgba(hex,a){ const h=hex.replace('#',''); const n=parseInt(h,16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function rnd(a,b){ return a+Math.random()*(b-a); }
+  function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function text(txt,x,y,size=11,color=theme().soft,align='left',font='ui-monospace,Consolas,monospace',weight='400'){
+    ctx.fillStyle=color; ctx.font=`${weight} ${size}px ${font}`; ctx.textAlign=align; ctx.fillText(txt,x,y);
+  }
+  function panelFrame(p, accent, glow=1){
+    ctx.save();
+    rr(p.x,p.y,p.w,p.h,18); ctx.clip();
+    const g=ctx.createLinearGradient(p.x,p.y,p.x,p.y+p.h);
+    g.addColorStop(0,rgba('#ffffff',.045)); g.addColorStop(.14,theme().panel); g.addColorStop(1,'rgba(4,8,12,.92)');
+    ctx.fillStyle=g; ctx.fillRect(p.x,p.y,p.w,p.h);
+    // micro grid
+    ctx.strokeStyle=rgba(accent,.05); ctx.lineWidth=1;
+    for(let i=0;i<p.w;i+=22){ ctx.beginPath(); ctx.moveTo(p.x+i,p.y); ctx.lineTo(p.x+i,p.y+p.h); ctx.stroke(); }
+    for(let j=0;j<p.h;j+=18){ ctx.beginPath(); ctx.moveTo(p.x,p.y+j); ctx.lineTo(p.x+p.w,p.y+j); ctx.stroke(); }
+    // focused sweep
+    const sx = p.x + ((performance.now()*0.03 + p.x*0.8)%(p.w+120))-60;
+    const sweep = ctx.createLinearGradient(sx,p.y,sx+60,p.y);
+    sweep.addColorStop(0,'rgba(255,255,255,0)'); sweep.addColorStop(.46,rgba('#ffffff',.02*glow)); sweep.addColorStop(.54,rgba(accent,.10*glow)); sweep.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=sweep; ctx.fillRect(p.x,p.y,p.w,p.h);
+    ctx.restore();
+    // outer glow and border
+    const shadow = ctx.createRadialGradient(p.x+p.w*.5,p.y+p.h*.5,10,p.x+p.w*.5,p.y+p.h*.5,Math.max(p.w,p.h));
+    shadow.addColorStop(0,rgba(accent,.08*glow)); shadow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=shadow; ctx.beginPath(); ctx.ellipse(p.x+p.w*.5,p.y+p.h*.5,p.w*.52,p.h*.58,0,0,Math.PI*2); ctx.fill();
+    rr(p.x,p.y,p.w,p.h,18); ctx.strokeStyle=rgba(accent,.35); ctx.lineWidth=1.1; ctx.stroke();
+    // corner brackets
+    ctx.strokeStyle=rgba(theme().edge,.72); ctx.lineWidth=1.3;
+    const c=14;
+    [[p.x+8,p.y+8,1,1],[p.x+p.w-8,p.y+8,-1,1],[p.x+8,p.y+p.h-8,1,-1],[p.x+p.w-8,p.y+p.h-8,-1,-1]].forEach(([x,y,sx2,sy2])=>{
+      ctx.beginPath(); ctx.moveTo(x,y+sy2*c); ctx.lineTo(x,y); ctx.lineTo(x+sx2*c,y); ctx.stroke();
+    });
+  }
+  function panelLabel(p,title,sub,accent){
+    text(title,p.x+14,p.y+18,12,theme().edge,'left','Inter,system-ui,sans-serif','700');
+    text(sub,p.x+p.w-14,p.y+18,10,rgba(accent,.86),'right');
+  }
+  function clipPanel(p){ rr(p.x,p.y,p.w,p.h,18); ctx.clip(); }
+
+  function pushTerm(line){
+    state.termLines.unshift(line);
+    if(state.termLines.length>18) state.termLines.pop();
+  }
+  function seedTerminal(){
+    ['> boot dna.monitor','> planner.route = stable','> verifier acceptance 91%','> queue ingest 184','> memory vault retention 88%','> alert tape nominal'].forEach(pushTerm);
+  }
+
+  function spawnParticle(mult=1){
+    const sources=['workflow','pulse','topology','tokens','memory'];
+    const src=sources[Math.floor(Math.random()*sources.length)];
+    const a=layoutsById[src];
+    if(!a) return;
+    state.particles.push({
+      x:a.x+a.w*(.12+Math.random()*.76), y:a.y+a.h*(.2+Math.random()*.6),
+      vx:rnd(-.25,.25)*mult, vy:rnd(-.08,.08)*mult, life:rnd(24,52), max:rnd(24,52), c:Math.random()>.66?'line3':Math.random()>.5?'line2':'line'
+    });
+  }
+
+  let layoutsById = {};
+  function layout(){
+    const W=state.W,H=state.H; const m=14,g=10, top=68, bottom=36;
+    const availH=H-top-bottom-m; const x1=m, w1=Math.max(220,W*.22); const x2=x1+w1+g, w2=Math.max(320,W*.34); const x3=x2+w2+g, w3=Math.max(170,W*.16); const x4=x3+w3+g, w4=W-x4-m;
+    const y1=top;
+    const hA=Math.max(120,availH*.23), hB=Math.max(160,availH*.26), hC=Math.max(120,availH*.18), hD=availH-(hA+hB+hC+g*3);
+    const leftMiniH=(hD-g)/2;
+    const centerBotH=Math.max(120,availH*.19); const centerMiniH=availH-hA-hB-centerBotH-g*3;
+    const rightTopH=Math.max(110,availH*.2); const rightMidH=Math.max(120,availH*.18); const rightBotH=availH-rightTopH-rightMidH-g*2;
+    const farTopH=Math.max(105,availH*.18); const farMidH=Math.max(110,availH*.18); const farMid2H=Math.max(120,availH*.2); const farBotH=availH-farTopH-farMidH-farMid2H-g*3;
+    state.layout=[
+      {id:'header',x:m,y:10,w:W-m*2,h:44},
+      {id:'terminal',x:x1,y:y1,w:w1,h:hA},
+      {id:'topology',x:x1,y:y1+hA+g,w:w1,h:hB},
+      {id:'radar',x:x1,y:y1+hA+hB+g*2,w:w1,h:hC},
+      {id:'alerts',x:x1,y:y1+hA+hB+hC+g*3,w:w1,h:leftMiniH},
+      {id:'spectrum',x:x1,y:y1+hA+hB+hC+leftMiniH+g*4,w:w1,h:leftMiniH},
+      {id:'workflow',x:x2,y:y1,w:w2,h:hA},
+      {id:'pulse',x:x2,y:y1+hA+g,w:w2,h:hB},
+      {id:'heat',x:x2,y:y1+hA+hB+g*2,w:w2,h:centerBotH},
+      {id:'miniFlow',x:x2,y:y1+hA+hB+centerBotH+g*3,w:w2,h:centerMiniH},
+      {id:'tokens',x:x3,y:y1,w:w3,h:rightTopH},
+      {id:'verify',x:x3,y:y1+rightTopH+g,w:w3,h:rightMidH},
+      {id:'queue',x:x3,y:y1+rightTopH+rightMidH+g*2,w:w3,h:rightBotH},
+      {id:'memory',x:x4,y:y1,w:w4,h:farTopH},
+      {id:'ctx',x:x4,y:y1+farTopH+g,w:w4,h:farMidH},
+      {id:'workers',x:x4,y:y1+farTopH+farMidH+g*2,w:w4,h:farMid2H},
+      {id:'tape',x:x4,y:y1+farTopH+farMidH+farMid2H+g*3,w:w4,h:farBotH},
+      {id:'ticker',x:m,y:H-bottom,w:W-m*2,h:26}
+    ];
+    layoutsById={}; state.layout.forEach(p=>layoutsById[p.id]=p);
+  }
+
+  function update(dt,t){
+    if(state.paused) return;
+    const m=state.metrics;
+    state.burst=Math.max(0,state.burst-dt*.8);
+    m.load=clamp(m.load+rnd(-.012,.012)+(.62-m.load)*.05, .2,.97);
+    m.tokens=clamp(m.tokens+rnd(-35,50)-state.burst*22, 480,12800);
+    m.queue=clamp(m.queue+rnd(-3,3)+(186-m.queue)*.04+state.burst*3, 18,420);
+    m.verify=clamp(m.verify+rnd(-.008,.008)+(.91-m.verify)*.05, .34,.99);
+    m.latency=clamp(m.latency+rnd(-1.2,1.2)+(42-m.latency)*.04+state.burst*2, 8,120);
+    m.mem=clamp(m.mem+rnd(-1,1)+(61-m.mem)*.04, 14,96);
+    m.io=clamp(m.io+rnd(-1.5,1.5)+(74-m.io)*.04+state.burst*5, 16,99);
+    m.ctx=clamp(m.ctx+rnd(-1,1)+(183-m.ctx)*.04, 28,400);
+    m.alerts=clamp(Math.round(m.alerts + (Math.random()>.985?1:0) - (Math.random()>.992?1:0)),0,9);
+    state.queueHistory.push(m.queue); if(state.queueHistory.length>64) state.queueHistory.shift();
+    state.latencyHistory.push(m.latency); if(state.latencyHistory.length>64) state.latencyHistory.shift();
+    state.spectrum=state.spectrum.map((v,i)=>clamp(v+rnd(-.13,.13)+((Math.sin(t*.001+i*.4)+1)/2-v)*.12, .06,1));
+    state.heat=state.heat.map((row,ri)=>row.map((v,ci)=>clamp(v+rnd(-.06,.06)+((Math.sin(t*.0014+ri*.8+ci*.3)+1)/2-v)*.06,0,1)));
+    state.topology.forEach((n,i)=>{n.x=clamp(n.x+n.vx+rnd(-.0009,.0009),.08,.92); n.y=clamp(n.y+n.vy+rnd(-.0009,.0009),.12,.88); if(n.x<=.08||n.x>=.92) n.vx*=-1; if(n.y<=.12||n.y>=.88) n.vy*=-1; n.t+=dt;});
+    if(Math.random()>.94) spawnParticle(1+state.burst*1.8);
+    state.particles.forEach(p=>{p.x+=p.vx; p.y+=p.vy; p.life-=1;});
+    state.particles=state.particles.filter(p=>p.life>0);
+    state.pulsePhase += dt*(1.3+state.burst*2.2);
+    state.tickerX -= 70*dt; if(state.tickerX < -5000) state.tickerX = 0;
+    if(Math.random()>.975){
+      const verbs=['dispatch','verify','cache','wake','route','shard','compress','attach','repair','seal','trace'];
+      const tags=['planner','verifier','memory','watcher','coder','router'];
+      pushTerm(`> ${tags[Math.floor(Math.random()*tags.length)]}.${verbs[Math.floor(Math.random()*verbs.length)]}() :: ${Math.random()>.75?'hold':'ok'}`);
+    }
+  }
+
+  function drawBackground(t){
+    const th=theme();
+    const g=ctx.createRadialGradient(state.W*.5,state.H*.18,10,state.W*.5,state.H*.7,Math.max(state.W,state.H));
+    g.addColorStop(0,'#0d121d'); g.addColorStop(.28,'#080b12'); g.addColorStop(.65,'#04060a'); g.addColorStop(1,'#010204');
+    ctx.fillStyle=g; ctx.fillRect(0,0,state.W,state.H);
+    // rays
+    for(let i=0;i<6;i++){
+      const x=state.W*.08+i*state.W*.16+Math.sin(t*.0002+i)*22;
+      const lg=ctx.createLinearGradient(x,0,x+40,state.H*.72);
+      lg.addColorStop(0,rgba(i%2?th.line2:th.line,.09)); lg.addColorStop(.22,rgba(i%2?th.line2:th.line,.02)); lg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=lg; ctx.beginPath(); ctx.moveTo(x-22,0); ctx.lineTo(x+22,0); ctx.lineTo(x+120,state.H*.82); ctx.lineTo(x-96,state.H*.82); ctx.closePath(); ctx.fill();
+    }
+    // stars/noise
+    for(let i=0;i<80;i++){
+      const x=(i*137)%state.W, y=(i*97 + (t*.01)%state.H)%state.H;
+      ctx.fillStyle=`rgba(255,255,255,${i%3===0?.16:.06})`; ctx.fillRect(x,y,1,1);
+    }
+    // corner fades
+    const corners=[[0,0],[state.W,0],[0,state.H],[state.W,state.H]];
+    corners.forEach(([x,y])=>{ const rg=ctx.createRadialGradient(x,y,5,x,y,180); rg.addColorStop(0,rgba(th.line,.09)); rg.addColorStop(.24,rgba(th.line2,.03)); rg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=rg; ctx.fillRect(x-180,y-180,360,360); });
+  }
+
+  function drawHeader(p,t){
+    panelFrame(p,theme().line,1.1); panelLabel(p,'DNA // CYBER TERMINAL MATRIX','COMMAND DECK',theme().line);
+    const m=state.metrics; const items=[
+      ['LOAD',Math.round(m.load*100)+'%'],['TOKENS',Math.round(m.tokens)],['QUEUE',Math.round(m.queue)],['VERIFY',Math.round(m.verify*100)+'%'],['CTX',Math.round(m.ctx)+'k'],['MEM',Math.round(m.mem)+'%'],['I/O',Math.round(m.io)+'%'],['ALERTS',Math.round(m.alerts)]
+    ];
+    const startX=p.x+180; const pillW=Math.min(104,(p.w-330)/items.length);
+    items.forEach((it,idx)=>{
+      const x=startX+idx*(pillW+8), y=p.y+9, w=pillW, h=24; rr(x,y,w,h,12); ctx.fillStyle='rgba(255,255,255,.03)'; ctx.fill(); ctx.strokeStyle=rgba(idx%3===0?theme().line:idx%3===1?theme().line2:theme().line3,.24); ctx.stroke();
+      text(it[0],x+10,y+15,9,rgba(theme().soft,.75)); text(String(it[1]),x+w-10,y+15,10,theme().edge,'right');
+    });
+    const ribbon=`LIVE OPS • WORKERS ${m.workers} • SHARDS ${m.shards} • ACCEPTANCE ${Math.round(m.verify*100)}% • TOKEN RESERVE ${Math.round(m.tokens)} • QUEUE ${Math.round(m.queue)} •`;
+    ctx.save(); rr(p.x+12,p.y+p.h-16,p.w-24,10,5); ctx.clip(); text(ribbon.repeat(4), p.x+p.w-20+(state.tickerX%900), p.y+p.h-8, 10, rgba(theme().line,.82), 'left'); ctx.restore();
+  }
+
+  function drawTerminal(p){
+    panelFrame(p,theme().line,1); panelLabel(p,'TERMINAL FEED','RAW STREAM',theme().line);
+    ctx.save(); clipPanel(p);
+    const tapeY=p.y+30; ctx.fillStyle=rgba(theme().line,.08); ctx.fillRect(p.x+12,tapeY,p.w-24,1);
+    state.termLines.forEach((line,idx)=>{
+      const y=p.y+46+idx*14; if(y>p.y+p.h-12) return;
+      const col=idx===0?theme().edge:(idx%4===0?theme().line3:theme().soft);
+      text(line,p.x+14,y,10,col);
+    });
+    for(let i=0;i<8;i++){ const y=p.y+p.h-18-i*12; const x=p.x+14+((performance.now()*.05+i*36)%(p.w-80)); ctx.fillStyle=rgba(i%2?theme().line2:theme().line,.16); ctx.fillRect(x,y,42,1); }
+    ctx.restore();
+  }
+
+  function drawTopology(p,t){
+    panelFrame(p,theme().line2,.95); panelLabel(p,'AGENT TOPOLOGY','SWARM MESH',theme().line2);
+    ctx.save(); clipPanel(p);
+    const nodes=state.topology.map(n=>({x:p.x+n.x*p.w,y:p.y+n.y*p.h}));
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y, d=Math.hypot(dx,dy);
+        if(d<110){ ctx.strokeStyle=rgba((i+j)%3===0?theme().line3:(i%2?theme().line2:theme().line), .12*(1-d/110)); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(nodes[i].x,nodes[i].y); ctx.lineTo(nodes[j].x,nodes[j].y); ctx.stroke(); }
+      }
+    }
+    nodes.forEach((n,idx)=>{ const r=2.3+1.4*Math.sin(performance.now()*.003+idx); ctx.fillStyle=rgba(idx%3===0?theme().line3:idx%2?theme().line2:theme().line,.94); ctx.shadowColor=idx%3===0?theme().line3:idx%2?theme().line2:theme().line; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(n.x,n.y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
+    text('planner / coder / verifier / memory / watcher / shards',p.x+14,p.y+p.h-14,10,theme().soft);
+    ctx.restore();
+  }
+
+  function drawRadar(p,t){
+    panelFrame(p,theme().line3,.9); panelLabel(p,'WORKER RADAR','SWEEP',theme().line3);
+    ctx.save(); clipPanel(p);
+    const cx=p.x+p.w*.5, cy=p.y+p.h*.56, r=Math.min(p.w,p.h)*.31;
+    for(let i=1;i<=4;i++){ ctx.strokeStyle=rgba(theme().line,.14); ctx.beginPath(); ctx.arc(cx,cy,r*i/4,0,Math.PI*2); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx-r,cy); ctx.lineTo(cx+r,cy); ctx.moveTo(cx,cy-r); ctx.lineTo(cx,cy+r); ctx.strokeStyle=rgba(theme().line,.12); ctx.stroke();
+    const ang=(t*.0016)%(Math.PI*2); ctx.fillStyle=ctx.createRadialGradient(cx,cy,0,cx,cy,r); ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,ang-.25,ang); ctx.closePath(); ctx.fillStyle=rgba(theme().line,.08); ctx.fill();
+    state.workerBlips.forEach((b,idx)=>{ const x=cx+Math.cos(b.a+t*b.s)*r*b.r, y=cy+Math.sin(b.a+t*b.s)*r*b.r; const hit=Math.abs(((b.a+t*b.s)%(Math.PI*2))-ang)<.22; ctx.fillStyle=rgba(hit?theme().line3:theme().line2, hit?.95:.55); ctx.beginPath(); ctx.arc(x,y, hit?3:2,0,Math.PI*2); ctx.fill(); });
+    text(`WORKERS ${state.metrics.workers}`,p.x+12,p.y+p.h-14,10,theme().edge); text(`ALERTS ${state.metrics.alerts}`,p.x+p.w-12,p.y+p.h-14,10,rgba(theme().line3,.92),'right');
+    ctx.restore();
+  }
+
+  function drawAlerts(p){
+    panelFrame(p,theme().line3,.85); panelLabel(p,'ALERT TAPE','FLAGS',theme().line3);
+    const items=['watcher idle drift','queue soften','planner stable','verify packet high','permit heat nominal','memory seal ok'];
+    items.forEach((s,i)=>{ text(`› ${s}`,p.x+14,p.y+40+i*14,10,i<2?theme().edge:theme().soft); });
+  }
+
+  function drawSpectrum(p,t){
+    panelFrame(p,theme().line2,.85); panelLabel(p,'TELEMETRY SPECTRUM','BANDS',theme().line2);
+    const bars=state.spectrum.length, gap=3, bw=(p.w-24-gap*(bars-1))/bars;
+    state.spectrum.forEach((v,i)=>{ const h=(p.h-42)*v; const x=p.x+12+i*(bw+gap), y=p.y+p.h-12-h; ctx.fillStyle=rgba(i%4===0?theme().line3:i%2?theme().line2:theme().line,.78); ctx.fillRect(x,y,bw,h); });
+    text('energy / noise / route activity',p.x+14,p.y+p.h-12,10,theme().soft);
+  }
+
+  function drawWorkflow(p,t){
+    panelFrame(p,theme().line2,1.1); panelLabel(p,'WORKFLOW ORCHESTRATOR','GENERAL FLOW',theme().line2);
+    ctx.save(); clipPanel(p);
+    const xs=[.10,.24,.39,.56,.73,.88].map(v=>p.x+v*p.w); const y=p.y+p.h*.58; const labels=['INTAKE','PLAN','CODE','VERIFY','MEMORY','SHIP'];
+    for(let i=0;i<xs.length-1;i++){
+      ctx.strokeStyle=rgba(theme().line,.18); ctx.lineWidth=2.4; ctx.beginPath(); ctx.moveTo(xs[i]+16,y); ctx.lineTo(xs[i+1]-16,y); ctx.stroke();
+      // moving packet
+      const prog=((t*.00024+i*.15)%1); const px=lerp(xs[i]+16,xs[i+1]-16,prog); ctx.fillStyle=rgba(theme().line3,.95); ctx.beginPath(); ctx.arc(px,y,3.4,0,Math.PI*2); ctx.fill();
+    }
+    xs.forEach((x,i)=>{ const active=i===3; const c=active?theme().line3:(i%2?theme().line2:theme().line); ctx.shadowColor=c; ctx.shadowBlur=active?18:10; ctx.fillStyle=rgba(c,.95); ctx.beginPath(); ctx.arc(x,y,active?8:6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; text(labels[i],x,y+26,10,active?theme().edge:theme().soft,'center'); });
+    // top progress bars
+    for(let i=0;i<5;i++){ const bx=p.x+18, by=p.y+38+i*16, bw=p.w-36; ctx.fillStyle='rgba(255,255,255,.03)'; ctx.fillRect(bx,by,bw,6); const val=(Math.sin(t*.0013+i*.72)+1)/2; ctx.fillStyle=rgba(i%2?theme().line:theme().line2,.66); ctx.fillRect(bx,by,bw*(.16+.74*val),6); text(['SHARDS','ACCEPT','ROUTES','CACHE','LOCKS'][i],bx,by-2,9,theme().soft); }
+    ctx.restore();
+  }
+
+  function drawPulse(p,t){
+    panelFrame(p,theme().line,1.2); panelLabel(p,'PULSE BUS','LIVE CORE',theme().line);
+    ctx.save(); clipPanel(p);
+    const midY=p.y+p.h*.5; const left=p.x+14,right=p.x+p.w-14;
+    // heartbeat / pulse line
+    ctx.strokeStyle=rgba(theme().line,.85); ctx.lineWidth=2; ctx.beginPath();
+    for(let x=left;x<=right;x++){
+      const u=(x-left)/(right-left); let y=midY;
+      y += Math.sin(u*20 + t*.004)*8;
+      const spike=Math.exp(-Math.pow((u-((state.pulsePhase*.18)%1))*35,2));
+      y -= spike*(22+state.burst*18);
+      y += Math.sin(u*44+t*.0021)*3;
+      if(x===left) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // secondary wave
+    ctx.strokeStyle=rgba(theme().line2,.65); ctx.lineWidth=1.3; ctx.beginPath();
+    for(let x=left;x<=right;x++){
+      const u=(x-left)/(right-left); const y=midY+34 + Math.sin(u*14+t*.002)*12 + Math.cos(u*37+t*.0014)*4; if(x===left) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.stroke();
+    ctx.strokeStyle=rgba(theme().line3,.56); ctx.beginPath();
+    for(let x=left;x<=right;x++){
+      const u=(x-left)/(right-left); const y=midY-30 + Math.cos(u*12+t*.0018)*10; if(x===left) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.stroke();
+    // centered halo
+    const cx=p.x+p.w*.5, cy=midY; const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,90); rg.addColorStop(0,rgba(theme().line3,.34)); rg.addColorStop(.16,rgba(theme().line,.16)); rg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(cx,cy,90,0,Math.PI*2); ctx.fill();
+    text('heartbeat / dual telemetry / bus health',p.x+14,p.y+p.h-14,10,theme().soft); text(state.metrics.verify>.86?'GREEN PULSE':'WEAK PULSE',p.x+p.w-14,p.y+p.h-14,10,state.metrics.verify>.86?rgba(theme().line,.95):rgba(theme().line3,.95),'right');
+    ctx.restore();
+  }
+
+  function drawHeat(p){
+    panelFrame(p,theme().line3,.96); panelLabel(p,'PERMIT HEAT','PRESSURE MAP',theme().line3);
+    ctx.save(); clipPanel(p);
+    const rows=state.heat.length, cols=state.heat[0].length, gap=3; const cellW=(p.w-24-gap*(cols-1))/cols, cellH=(p.h-42-gap*(rows-1))/rows;
+    state.heat.forEach((row,ri)=>row.forEach((v,ci)=>{ const x=p.x+12+ci*(cellW+gap), y=p.y+30+ri*(cellH+gap); const c=v<.33?theme().line:v<.66?theme().line2:theme().line3; ctx.fillStyle=rgba(c,.18+.6*v); ctx.fillRect(x,y,cellW,cellH); }));
+    ctx.restore();
+  }
+
+  function drawMiniFlow(p,t){
+    panelFrame(p,theme().line2,.92); panelLabel(p,'SHARD CHECKLIST','VERIFY STAGE',theme().line2);
+    const steps=[['load spec',1],['run tests',1],['compare output',1],['repair delta',1],['seal batch',Math.sin(t*.0015)>0?0:1]];
+    steps.forEach((s,i)=>{ const y=p.y+42+i*18; ctx.fillStyle=rgba(s[1]?theme().line:theme().line3,s[1]?.8:.9); ctx.beginPath(); ctx.arc(p.x+20,y-4,4,0,Math.PI*2); ctx.fill(); text(s[0],p.x+32,y,10,s[1]?theme().edge:theme().line3); if(i<steps.length-1){ ctx.strokeStyle=rgba(theme().line,.12); ctx.beginPath(); ctx.moveTo(p.x+20,y); ctx.lineTo(p.x+20,y+14); ctx.stroke(); } });
+    for(let i=0;i<3;i++){ const x=p.x+p.w*.55+i*42; const h=28+Math.sin(t*.002+i)*18; ctx.fillStyle=rgba(i===2?theme().line3:theme().line2,.65); ctx.fillRect(x,p.y+p.h-18-h,24,h); text(['TEST','FIX','SEAL'][i],x+12,p.y+p.h-6,9,theme().soft,'center'); }
+  }
+
+  function drawTokens(p,t){
+    panelFrame(p,theme().line3,.92); panelLabel(p,'TOKEN RESERVOIR','RESOURCE',theme().line3);
+    const base=p.y+p.h-16; const bw=(p.w-24)/7;
+    for(let i=0;i<7;i++){
+      const v=.22+.68*((Math.sin(t*.0018+i*.6)+1)/2); const h=(p.h-54)*v; const x=p.x+12+i*bw+4; ctx.fillStyle='rgba(255,255,255,.03)'; ctx.fillRect(x,base-(p.h-54),bw-8,p.h-54); ctx.fillStyle=rgba(i<2?theme().line3:(i%2?theme().line2:theme().line),.78); ctx.fillRect(x,base-h,bw-8,h); }
+    text(`RESERVE ${Math.round(state.metrics.tokens)}`,p.x+14,p.y+40,11,theme().edge); text(`DRAIN ${Math.round(state.metrics.queue*1.7)}`,p.x+14,p.y+54,10,theme().soft);
+  }
+
+  function drawVerify(p,t){
+    panelFrame(p,theme().line,.9); panelLabel(p,'VERIFIER ARRAY','CHECKS',theme().line);
+    ['acceptance','stability','schema','goldens','runtime'].forEach((lab,i)=>{ const y=p.y+40+i*18; const val=.28+.68*((Math.sin(t*.0016+i*.8)+1)/2); ctx.fillStyle='rgba(255,255,255,.03)'; ctx.fillRect(p.x+74,y-8,p.w-88,8); ctx.fillStyle=rgba(i===3?theme().line3:theme().line,.78); ctx.fillRect(p.x+74,y-8,(p.w-88)*val,8); text(lab,p.x+14,y,9,theme().soft); });
+  }
+
+  function drawQueue(p){
+    panelFrame(p,theme().line2,.95); panelLabel(p,'QUEUE / LATENCY','DUAL HISTORY',theme().line2);
+    ctx.save(); clipPanel(p);
+    const left=p.x+12, top=p.y+30, w=p.w-24, h=p.h-44;
+    for(let i=0;i<=4;i++){ ctx.strokeStyle=rgba(theme().line,.08); ctx.beginPath(); ctx.moveTo(left,top+i*h/4); ctx.lineTo(left+w,top+i*h/4); ctx.stroke(); }
+    // queue line
+    ctx.strokeStyle=rgba(theme().line,.84); ctx.lineWidth=1.8; ctx.beginPath(); state.queueHistory.forEach((v,i)=>{ const x=left+i*(w/(state.queueHistory.length-1)), y=top+h-(v/420)*h; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+    ctx.strokeStyle=rgba(theme().line3,.76); ctx.lineWidth=1.4; ctx.beginPath(); state.latencyHistory.forEach((v,i)=>{ const x=left+i*(w/(state.latencyHistory.length-1)), y=top+h-(v/120)*h; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+    text(`Q ${Math.round(state.metrics.queue)}`,left,top+h+12,9,theme().line); text(`L ${Math.round(state.metrics.latency)}ms`,left+54,top+h+12,9,theme().line3);
+    ctx.restore();
+  }
+
+  function drawMemory(p){
+    panelFrame(p,theme().line,.9); panelLabel(p,'CTX / MEM / IO','DENSE TABLE',theme().line);
+    const rows=[['CTX',state.metrics.ctx+'k'],['MEM',Math.round(state.metrics.mem)+'%'],['I/O',Math.round(state.metrics.io)+'%'],['RET','88%'],['CACHE','73%'],['LOCKS','02']];
+    rows.forEach((r,i)=>{ const y=p.y+38+i*16; ctx.fillStyle=i%2?'rgba(255,255,255,.015)':'rgba(255,255,255,.03)'; ctx.fillRect(p.x+12,y-10,p.w-24,14); text(r[0],p.x+18,y,10,theme().soft); text(String(r[1]),p.x+p.w-18,y,10,theme().edge,'right'); });
+  }
+
+  function drawCtx(p){
+    panelFrame(p,theme().line2,.88); panelLabel(p,'MICRO METRICS','TABLE',theme().line2);
+    const cols=['CTX','MEM','IO']; const vals=[state.metrics.ctx,state.metrics.mem,state.metrics.io];
+    cols.forEach((c,i)=>{ const x=p.x+18+i*((p.w-36)/3); text(c,x,p.y+34,9,theme().soft); text(i===0?Math.round(vals[i])+'k':Math.round(vals[i])+'%',x,p.y+54,13,theme().edge); });
+    for(let i=0;i<3;i++){
+      const x=p.x+18+i*((p.w-36)/3), w=(p.w-56)/3, y=p.y+72, h=8; ctx.fillStyle='rgba(255,255,255,.03)'; ctx.fillRect(x,y,w,h); ctx.fillStyle=rgba(i===1?theme().line2:theme().line,.72); ctx.fillRect(x,y,w*(i===0?state.metrics.ctx/400:(i===1?state.metrics.mem/100:state.metrics.io/100)),h);
+    }
+  }
+
+  function drawWorkers(p,t){
+    panelFrame(p,theme().line,.9); panelLabel(p,'WORKER MATRIX','LIVE ORBITS',theme().line);
+    const cx=p.x+p.w*.5, cy=p.y+p.h*.55, r1=Math.min(p.w,p.h)*.22, r2=r1*1.46;
+    [r1,r2].forEach(r=>{ ctx.strokeStyle=rgba(theme().line,.14); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke(); });
+    for(let i=0;i<state.metrics.workers;i++){
+      const a=t*.001*(.9+i*.06)+i*.5; const r=i%2?r1:r2; const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r; const c=i%3===0?theme().line3:i%2?theme().line2:theme().line; ctx.fillStyle=rgba(c,.92); ctx.beginPath(); ctx.arc(x,y,2.6,0,Math.PI*2); ctx.fill();
+      if(i<6){ ctx.strokeStyle=rgba(c,.15); ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.stroke(); }
+    }
+    text('planners / coders / verifiers / watchers',p.x+14,p.y+p.h-12,10,theme().soft);
+  }
+
+  function drawTape(p,t){
+    panelFrame(p,theme().line3,.88); panelLabel(p,'EVENT TAPE','MICRO ACTIONS',theme().line3);
+    const msgs=['router attached batch-14','verifier sealed 14/15','memory wrote summary','worker-07 woke shard','planner diff accepted','token drain soft'];
+    msgs.forEach((msg,i)=>{ const y=p.y+38+i*14; text(msg,p.x+14+Math.sin(t*.001+i)*3,y,10,i<2?theme().edge:theme().soft); if(i<msgs.length-1){ ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(p.x+14,y+4); ctx.lineTo(p.x+p.w-14,y+4); ctx.stroke(); } });
+  }
+
+  function drawTicker(p,t){
+    rr(p.x,p.y,p.w,p.h,10); ctx.fillStyle='rgba(5,10,15,.92)'; ctx.fill(); ctx.strokeStyle=rgba(theme().line,.24); ctx.stroke();
+    const tape='  ACTION  •  planner.route() stable  •  verifier delta small  •  token reserve healthy  •  cache retention 88%  •  queue oscillation nominal  •  '; 
+    ctx.save(); rr(p.x,p.y,p.w,p.h,10); ctx.clip(); text(tape.repeat(8), p.x+p.w+(state.tickerX%(tape.length*8))-2000, p.y+17, 11, rgba(theme().line,.92)); ctx.restore();
+  }
+
+  function drawParticles(){
+    state.particles.forEach(p=>{ const a=p.life/p.max; const c=theme()[p.c]; ctx.strokeStyle=rgba(c,.22*a); ctx.beginPath(); ctx.moveTo(p.x-p.vx*10,p.y-p.vy*10); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.fillStyle=rgba(c,.96*a); ctx.shadowColor=c; ctx.shadowBlur=12*a; ctx.beginPath(); ctx.arc(p.x,p.y,1.6+2*a,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
+  }
+
+  function render(now){
+    const dt=Math.min(.05,(now-state.tPrev)/1000); state.tPrev=now;
+    update(dt,now);
+    drawBackground(now);
+    state.hitRegions=[];
+    const drawMap={header:drawHeader,terminal:drawTerminal,topology:drawTopology,radar:drawRadar,alerts:drawAlerts,spectrum:drawSpectrum,workflow:drawWorkflow,pulse:drawPulse,heat:drawHeat,miniFlow:drawMiniFlow,tokens:drawTokens,verify:drawVerify,queue:drawQueue,memory:drawMemory,ctx:drawCtx,workers:drawWorkers,tape:drawTape,ticker:drawTicker};
+    state.layout.forEach(p=>{ drawMap[p.id](p,now); if(p.id!=='ticker'&&p.id!=='header') state.hitRegions.push(p); });
+    drawParticles();
+    // scanlines + vignette
+    ctx.fillStyle='rgba(255,255,255,.018)'; for(let y=0;y<state.H;y+=4) ctx.fillRect(0,y,state.W,1);
+    const vg=ctx.createRadialGradient(state.W*.5,state.H*.5,Math.min(state.W,state.H)*.18,state.W*.5,state.H*.5,Math.max(state.W,state.H)*.74); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.42)'); ctx.fillStyle=vg; ctx.fillRect(0,0,state.W,state.H);
+    requestAnimationFrame(render);
+  }
+
+  function openDetail(id){
+    const meta=panelMeta[id]; if(!meta) return;
+    modalTitle.textContent=meta.title;
+    modalText.textContent=meta.text;
+    modalGrid.innerHTML='';
+    meta.grid.forEach(([k,v])=>{ const d=document.createElement('div'); d.className='cell'; d.innerHTML=`<b>${k}</b><span>${typeof v==='function'?v():v}</span>`; modalGrid.appendChild(d); });
+    modalList.innerHTML=''; meta.list.forEach(item=>{ const li=document.createElement('li'); li.textContent=item; modalList.appendChild(li); });
+    modal.classList.add('show');
+  }
+
+  canvas.addEventListener('click',e=>{
+    const rect=canvas.getBoundingClientRect(); const x=e.clientX-rect.left, y=e.clientY-rect.top;
+    const hit=state.hitRegions.find(p=>x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h);
+    if(hit) openDetail(hit.id);
+  });
+  document.getElementById('closeModal').onclick=()=>modal.classList.remove('show');
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('show'); });
+  document.getElementById('themeBtn').onclick=()=>{ state.theme=(state.theme+1)%themes.length; };
+  document.getElementById('burstBtn').onclick=()=>{ state.burst=1.4; for(let i=0;i<16;i++) spawnParticle(1.8); pushTerm('> burst.pulse() :: amplified'); };
+  pauseBtn.onclick=()=>{ state.paused=!state.paused; pauseBtn.textContent=state.paused?'RESUME':'PAUSE'; };
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape') modal.classList.remove('show'); if(e.key===' '){e.preventDefault(); state.burst=1.4; for(let i=0;i<16;i++) spawnParticle(1.8);} if(e.key.toLowerCase()==='t'){state.theme=(state.theme+1)%themes.length;} });
+  function resize(){ state.W=window.innerWidth; state.H=window.innerHeight; canvas.width=Math.round(state.W*DPR); canvas.height=Math.round(state.H*DPR); canvas.style.width=state.W+'px'; canvas.style.height=state.H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); layout(); }
+  window.addEventListener('resize',resize);
+  resize(); seedTerminal(); for(let i=0;i<22;i++) spawnParticle(); requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
