@@ -1,0 +1,872 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dna.local/contracts/dna.fui.snapshot.v1.schema.json",
+  "title": "DNA FUI snapshot v1",
+  "description": "Read model for DNA Canvas: authoritative absolute values, from DNA engine. Optional fields may be omitted; absent != zero. Timings are UTC ISO 8601, costs in USD, progress is 0..1.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "snapshotId",
+    "generatedAt",
+    "source",
+    "system",
+    "focus",
+    "billing",
+    "agents",
+    "workflow"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "dna.fui/v1"
+    },
+    "snapshotId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lastEventId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "mock",
+            "api"
+          ]
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": true
+    },
+    "system": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "runtimeVersion": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "paused",
+            "degraded",
+            "offline",
+            "starting",
+            "stopping"
+          ]
+        },
+        "heartbeatAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "uptimeSeconds": {
+          "type": "number"
+        },
+        "coreId": {
+          "type": "string"
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "cpuPct": {
+              "type": "number"
+            },
+            "memoryPct": {
+              "type": "number"
+            },
+            "queueDepth": {
+              "type": "integer"
+            },
+            "apiSuccessPct": {
+              "type": "number"
+            },
+            "workerCount": {
+              "type": "integer"
+            },
+            "activeWorkerCount": {
+              "type": "integer"
+            },
+            "maxParallel": {
+              "type": "integer"
+            },
+            "hostMemoryUsedGb": {
+              "type": "number"
+            },
+            "hostMemoryTotalGb": {
+              "type": "number"
+            }
+          },
+          "required": [],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "state",
+        "heartbeatAt",
+        "metrics"
+      ],
+      "additionalProperties": true
+    },
+    "focus": {
+      "type": "object",
+      "properties": {
+        "jobId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jobName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processInstanceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workflowInstanceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workflowVersion": {
+          "type": "integer"
+        },
+        "createdByRuntimeVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "billing": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "const": "USD"
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalCostUsd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "costEstimated": {
+          "type": "boolean"
+        },
+        "budgetUsd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "byModel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "modelId": {
+                "type": "string"
+              },
+              "inputTokens": {
+                "type": "integer"
+              },
+              "outputTokens": {
+                "type": "integer"
+              },
+              "costUsd": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "modelId"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "inputTokens",
+        "outputTokens",
+        "totalCostUsd"
+      ],
+      "additionalProperties": true
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "system",
+              "agent",
+              "tool",
+              "service"
+            ]
+          },
+          "state": {
+            "type": "string"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tokens": {
+            "type": "integer"
+          },
+          "toolCalls": {
+            "type": "integer"
+          },
+          "lastEvent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "state"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "topology": {
+      "type": "object",
+      "properties": {
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "requests": {
+            "type": "integer"
+          },
+          "tokens": {
+            "type": "integer"
+          },
+          "costUsd": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "latencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reasoningRating": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "state"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "progress": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "currentTaskId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "waitingReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "runtimeVersionAtCreation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "processInstanceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "state"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "planRevision": {
+          "type": "integer"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "progress": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "attemptCount": {
+                "type": "integer"
+              },
+              "agentId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nodeInstanceId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lastAttemptId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "state",
+              "dependsOn"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "additionalProperties": true
+    },
+    "nodeAttempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "nodeInstanceId": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "workerId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leaseExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failureCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nodeInstanceId",
+          "state"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer"
+          },
+          "successes": {
+            "type": "integer"
+          },
+          "failures": {
+            "type": "integer"
+          },
+          "avgLatencyMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "tests": {
+      "type": "object",
+      "properties": {
+        "suiteId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "specVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "command": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "result": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "durationMs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "state"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "timeWindowSeconds": {
+          "type": "integer"
+        },
+        "loadPct": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "apiLatencyMs": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "queueDepth": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "swarm": {
+      "type": "object",
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "totalItems": {
+          "type": "integer"
+        },
+        "doneItems": {
+          "type": "integer"
+        },
+        "runningItems": {
+          "type": "integer"
+        },
+        "queuedItems": {
+          "type": "integer"
+        },
+        "failedItems": {
+          "type": "integer"
+        },
+        "batchSize": {
+          "type": "integer"
+        },
+        "workerCount": {
+          "type": "integer"
+        },
+        "batches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "index": {
+                "type": "integer"
+              },
+              "state": {
+                "type": "string"
+              },
+              "totalItems": {
+                "type": "integer"
+              },
+              "doneItems": {
+                "type": "integer"
+              },
+              "runningItems": {
+                "type": "integer"
+              },
+              "queuedItems": {
+                "type": "integer"
+              },
+              "failedItems": {
+                "type": "integer"
+              },
+              "workerIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "state",
+              "totalItems"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "alerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "title",
+          "state"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "humanActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "status"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "recentEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "type": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "type"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
