@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNA // CRYSTAL AURORA V3</title>
+<style>
+  :root{
+    --bg:#070a16;
+    --text:#f2f8ff;
+    --muted:rgba(235,244,255,.68);
+    --line:rgba(255,255,255,.14);
+    --glass:rgba(255,255,255,.12);
+    --glass2:rgba(255,255,255,.07);
+    --shadow:0 28px 90px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(255,255,255,.05);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(circle at 18% 8%,#1a2342 0%,#0b1021 30%,#060916 66%,#03050f 100%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+  canvas.bg{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .grain{position:fixed;inset:0;pointer-events:none;opacity:.045;background-image:radial-gradient(rgba(255,255,255,.95) .55px,transparent .9px);background-size:4px 4px;mix-blend-mode:soft-light}
+  .shell{position:fixed;inset:0;padding:14px;display:grid;grid-template-columns:260px minmax(420px,1.25fr) 320px;grid-template-rows:64px 1fr 220px;gap:14px;pointer-events:none}
+  .glass{position:relative;pointer-events:auto;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08));backdrop-filter:blur(28px) saturate(180%) contrast(108%);-webkit-backdrop-filter:blur(28px) saturate(180%) contrast(108%);border-radius:30px;box-shadow:var(--shadow);overflow:hidden}
+  .glass::before{content:"";position:absolute;inset:0;background:
+    linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.08) 20%,rgba(255,255,255,.02) 46%,rgba(255,255,255,.12) 100%),
+    radial-gradient(circle at 16% 10%,rgba(255,255,255,.28),rgba(255,255,255,0) 32%),
+    radial-gradient(circle at 86% 12%,rgba(255,255,255,.12),rgba(255,255,255,0) 28%);
+    pointer-events:none;mix-blend-mode:screen;opacity:.95}
+  .glass::after{content:"";position:absolute;inset:-12%;background:linear-gradient(120deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.06) 18%,rgba(142,240,255,.10) 28%,rgba(255,255,255,0) 40%,rgba(203,170,255,.10) 54%,rgba(255,255,255,0) 68%,rgba(255,220,166,.09) 84%,rgba(255,255,255,0) 100%);filter:blur(26px);opacity:.8;pointer-events:none;animation:holoDrift 15s linear infinite}
+  @keyframes holoDrift{0%{transform:translateX(-12%) translateY(-2%) rotate(0deg)}50%{transform:translateX(10%) translateY(2%) rotate(1deg)}100%{transform:translateX(-12%) translateY(-2%) rotate(0deg)}}
+  .topbar{grid-column:1 / 4;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .orb{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 30% 28%,rgba(255,255,255,.98),rgba(255,255,255,.35) 22%,rgba(134,233,255,.78) 44%,rgba(180,156,255,.38) 70%,rgba(255,255,255,.08));box-shadow:0 0 44px rgba(123,214,255,.45), inset 0 2px 6px rgba(255,255,255,.35)}
+  .title{display:flex;flex-direction:column;gap:4px}
+  .title b{font-size:15px;letter-spacing:.18em;font-weight:700}
+  .title span{font-size:11px;letter-spacing:.15em;color:var(--muted);text-transform:uppercase}
+  .chips{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .chip{padding:10px 14px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.16);font-size:12px;color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 6px 16px rgba(0,0,0,.16)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.16);border-radius:999px;color:var(--text);padding:10px 14px;font:600 12px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer;backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 rgba(255,255,255,.24)}
+  .btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.24)}
+  .side,.rightCol,.hero,.bottom{min-height:0}
+  .side{grid-column:1;grid-row:2 / 4;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .hero{grid-column:2;grid-row:2;padding:16px;display:grid;grid-template-columns:1.25fr .95fr;grid-template-rows:1fr 152px;gap:14px}
+  .rightCol{grid-column:3;grid-row:2 / 4;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .bottom{grid-column:2;grid-row:3;padding:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .panel{position:relative;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.11);box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(255,255,255,.04);overflow:hidden}
+  .panel::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 20%,rgba(255,255,255,.03) 60%,rgba(255,255,255,.08));opacity:.78;pointer-events:none}
+  .panel::after{content:"";position:absolute;inset:-16%;background:linear-gradient(130deg,rgba(255,255,255,0) 10%,rgba(134,233,255,.10) 23%,rgba(255,255,255,0) 36%,rgba(190,164,255,.10) 54%,rgba(255,255,255,0) 68%,rgba(255,214,154,.08) 82%,rgba(255,255,255,0) 100%);filter:blur(20px);opacity:.65;pointer-events:none;animation:holoPanel 11s ease-in-out infinite}
+  @keyframes holoPanel{0%,100%{transform:translateX(-8%) translateY(-2%)}50%{transform:translateX(8%) translateY(2%)}}
+  .panelHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;position:relative;z-index:2}
+  .panelHeader h3{margin:0;font-size:12px;letter-spacing:.16em;font-weight:700;text-transform:uppercase}
+  .panelHeader span{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+  .mini{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
+  .subtle{color:var(--muted)}
+  .metricRow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:7px 0}
+  .bar{height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+  .bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--c1),var(--c2));box-shadow:0 0 22px rgba(132,226,255,.42)}
+  .bar i.amber{background:linear-gradient(90deg,var(--amber),#ffe5c1);box-shadow:0 0 18px rgba(255,203,120,.38)}
+  .bar i.violet{background:linear-gradient(90deg,var(--c3),#ece2ff);box-shadow:0 0 18px rgba(182,156,255,.34)}
+  .stack{display:flex;flex-direction:column;gap:12px;position:relative;z-index:2}
+  .feed{height:100%;padding:0 16px 16px;display:flex;flex-direction:column;gap:8px;overflow:auto;position:relative;z-index:2}
+  .feedLine{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+  .feedLine b{font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+  .feedLine span{font-size:11px;color:var(--muted)}
+  .matrix{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px 16px;position:relative;z-index:2}
+  .microCard{padding:10px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);min-height:70px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+  .microCard b{display:block;font-size:10px;letter-spacing:.14em;margin-bottom:6px;color:var(--muted);text-transform:uppercase}
+  .microCard .value{font-size:20px;font-weight:700}
+  .tickerWrap{overflow:hidden;white-space:nowrap;padding:0 16px 14px;position:relative;z-index:2}
+  .ticker{display:inline-block;min-width:200%;animation:marq 24s linear infinite;font:600 11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;color:rgba(242,248,255,.86);letter-spacing:.12em;text-transform:uppercase}
+  @keyframes marq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .dual{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}
+  .softCaption{position:absolute;bottom:16px;left:16px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);z-index:2}
+  .table{padding:0 16px 16px;font:11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;position:relative;z-index:2}
+  .trow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .jobs{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px;position:relative;z-index:2}
+  .job{padding:12px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+  .jobTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+  .status{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:10px}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px;position:relative;z-index:2}
+  .legend .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+  .terminal{display:flex;flex-direction:column;height:100%}
+  .termLog{flex:1;overflow:auto;padding:0 16px 10px;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:rgba(239,246,255,.94);position:relative;z-index:2}
+  .termPrompt{display:flex;gap:10px;margin:0 16px 16px;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);position:relative;z-index:2}
+  .termPrompt span{color:var(--amber);font:600 11px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .termPrompt input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font:11px/1 ui-monospace,SFMono-Regular,Consolas,monospace}
+  .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,8,18,0);backdrop-filter:blur(0px);opacity:0;pointer-events:none;transition:opacity .25s ease,backdrop-filter .25s ease,background .25s ease;z-index:50}
+  .modal.show{opacity:1;pointer-events:auto;background:rgba(4,8,18,.34);backdrop-filter:blur(22px)}
+  .modalCard{width:min(780px,calc(100vw - 28px));max-height:84vh;overflow:auto;border-radius:32px;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 90px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.24);padding:18px 18px 20px;backdrop-filter:blur(32px) saturate(190%);-webkit-backdrop-filter:blur(32px) saturate(190%);position:relative;overflow:hidden}
+  .modalCard::after{content:"";position:absolute;inset:-16%;background:linear-gradient(120deg,rgba(255,255,255,0) 8%,rgba(141,241,255,.12) 26%,rgba(255,255,255,0) 38%,rgba(194,167,255,.12) 58%,rgba(255,255,255,0) 72%,rgba(255,212,150,.10) 90%,rgba(255,255,255,0));filter:blur(28px);pointer-events:none}
+  .modalTop{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;position:relative;z-index:2}
+  .modalTop h2{margin:0;font-size:15px;letter-spacing:.16em;text-transform:uppercase}
+  .close{border:none;background:rgba(255,255,255,.12);color:var(--text);padding:10px 14px;border-radius:999px;cursor:pointer;border:1px solid rgba(255,255,255,.14)}
+  .modalBody{font-size:14px;line-height:1.55;color:rgba(240,246,255,.94);position:relative;z-index:2}
+  .modalList{margin:12px 0 0 18px;padding:0;position:relative;z-index:2}
+  .modalList li{margin:0 0 10px}
+  .metaGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:16px;position:relative;z-index:2}
+  .meta{padding:12px 14px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10)}
+  .meta b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  @media (max-width:1320px){ .shell{grid-template-columns:220px 1fr 280px} }
+  @media (max-width:1100px){
+    body{overflow:auto}
+    .shell{position:relative;inset:auto;height:auto;min-height:100%;grid-template-columns:1fr;grid-template-rows:auto auto auto auto auto;padding:12px}
+    .topbar,.side,.hero,.rightCol,.bottom{grid-column:auto;grid-row:auto}
+    .hero{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+    .bottom{grid-template-columns:1fr}
+  }
+
+/* CRYSTAL MATERIAL REWRITE — light at the perimeter, not across the face. */
+:root { --surface-alpha:.045; --pane-alpha:.027; --edge-intensity:.75; }
+html,body {background:#030714;}
+.grain{display:none!important;}
+.glass{
+ background:rgba(9,16,29,var(--surface-alpha));
+ border:1px solid rgba(232,245,255,.23);
+ box-shadow:0 10px 32px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.24),inset 1px 0 rgba(255,255,255,.07),inset 0 -1px rgba(255,255,255,.035);
+ backdrop-filter:blur(.8px) saturate(106%);
+ -webkit-backdrop-filter:blur(.8px) saturate(106%);
+}
+.glass::before {
+ opacity:.8;
+ background:linear-gradient(180deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.008) 7%,transparent 13%,transparent 90%,rgba(255,255,255,.02) 100%);
+ mix-blend-mode:normal;
+}
+.glass::after{display:none!important;}
+.panel{
+ background:rgba(5,14,30,var(--pane-alpha));
+ border:1px solid rgba(228,246,255,.155);
+ box-shadow:inset 0 1px rgba(255,255,255,.14),inset 1px 0 rgba(255,255,255,.025);
+}
+.panel::before{
+ opacity:1;
+ background:linear-gradient(180deg,rgba(255,255,255,.027),transparent 11%,transparent 92%,rgba(255,255,255,.012));
+}
+.panel::after{display:none!important;}
+.chip,.btn,.feedLine,.microCard,.job,.termPrompt,.status,.meta{
+ background:rgba(18,29,47,.12);
+ border-color:rgba(238,248,255,.16);
+ box-shadow:inset 0 1px rgba(255,255,255,.07);
+ backdrop-filter:blur(.6px);
+ -webkit-backdrop-filter:blur(.6px);
+}
+.btn:hover,.job:hover{background:rgba(50,88,109,.20);border-color:rgba(227,249,255,.36);}
+.btn:focus-visible,.job:focus-visible{outline:1px solid #b8f5ff;outline-offset:2px;}
+.orb{box-shadow:0 0 12px rgba(123,214,255,.25),inset 0 1px 2px rgba(255,255,255,.4)}
+.bar{background:rgba(240,250,255,.075);}
+.bar i{box-shadow:none;}
+.panelHeader h3{color:rgba(250,252,255,.96)}
+.subtle,.title span,.panelHeader span{color:rgba(223,236,255,.66)}
+.modal.show{background:rgba(1,4,10,.60);backdrop-filter:blur(8px)}
+.modalCard{background:rgba(12,23,38,.90);border-color:rgba(228,245,255,.27);box-shadow:0 30px 85px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.16);backdrop-filter:blur(8px)}
+.modalCard::after{display:none}
+#optics{position:fixed;inset:0;z-index:4;pointer-events:none;width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){#optics{display:none}}
+
+/* Compact cockpit toolbar: never wrap into a second overlay row. */
+.topbar .chips{flex:1 1 auto;min-width:0;justify-content:center;gap:5px;flex-wrap:nowrap;}
+.topbar .chip{padding:7px 9px;font-size:10px;white-space:nowrap;}
+.topbar .toolbar{gap:5px;flex-wrap:nowrap;}
+.topbar .btn{padding:8px 10px;font-size:10px;white-space:nowrap;}
+.topbar .title span{max-width:355px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:1500px){.topbar .chip:last-child{display:none;}.topbar .title{max-width:270px}}
+</style>
+</head>
+<body>
+<canvas id="bg" class="bg"></canvas>
+
+<div class="shell">
+  <div class="glass topbar">
+    <div class="brand">
+      <div class="orb"></div>
+      <div class="title">
+        <b>DNA // CRYSTAL AURORA V3</b>
+        <span>crystal-clear optics · transparent glass · precision reflections</span>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="toolbar">
+      <button class="btn" id="pauseBtn">Pause</button>
+      <button class="btn" id="scanBtn">Deep Scan</button>
+      <button class="btn" id="drainBtn">Token Drain</button>
+      <button class="btn" id="burstBtn">Burst</button>
+      <button class="btn" id="themeBtn">Theme</button>
+    </div>
+  </div>
+
+  <div class="glass side">
+    <div class="panel" id="metricsPanel">
+      <div class="panelHeader"><h3>Fluid Status</h3><span>live</span></div>
+      <div class="stack" style="padding:0 16px 16px" id="metricStack"></div>
+    </div>
+    <div class="panel" id="agentsPanel" style="flex:1;min-height:0">
+      <div class="panelHeader"><h3>Agent Glass Stack</h3><span>roles</span></div>
+      <div class="feed" id="agentFeed"></div>
+    </div>
+    <div class="panel" id="tickPanel">
+      <div class="panelHeader"><h3>Signal Feed</h3><span>soft loop</span></div>
+      <div class="tickerWrap"><div class="ticker" id="tickerText"></div></div>
+    </div>
+  </div>
+
+  <div class="glass hero">
+    <div class="panel" id="dnaPanel" style="grid-row:1 / 3;min-height:0">
+      <div class="panelHeader"><h3>DNA Liquid Chamber</h3><span>semantic helix</span></div>
+      <canvas id="dnaCanvas" style="width:100%;height:calc(100% - 46px);display:block"></canvas>
+      <div class="softCaption">optically clear chamber · dual strands · flowing carriers</div>
+    </div>
+    <div class="panel" id="swarmPanel" style="min-height:0">
+      <div class="panelHeader"><h3>Neural Swarm</h3><span>orchestration field</span></div>
+      <canvas id="swarmCanvas" style="width:100%;height:calc(100% - 46px);display:block"></canvas>
+    </div>
+    <div class="dual">
+      <div class="panel" id="pulsePanel">
+        <div class="panelHeader"><h3>Pulse Glass</h3><span>vitality</span></div>
+        <canvas id="pulseCanvas" style="width:100%;height:90px;display:block"></canvas>
+      </div>
+      <div class="panel" id="radarPanel">
+        <div class="panelHeader"><h3>Soft Radar</h3><span>sweep</span></div>
+        <canvas id="radarCanvas" style="width:100%;height:90px;display:block"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass rightCol">
+    <div class="panel" id="jobsPanel" style="min-height:240px">
+      <div class="panelHeader"><h3>Job Stream</h3><span>click job</span></div>
+      <div class="jobs" id="jobsList"></div>
+    </div>
+    <div class="panel" id="microPanel" style="flex:1;min-height:0">
+      <div class="panelHeader"><h3>Micro Panels</h3><span>dense</span></div>
+      <div class="matrix" id="microMatrix"></div>
+    </div>
+    <div class="panel" id="themePanel">
+      <div class="panelHeader"><h3>Palette Capsule</h3><span>visual mode</span></div>
+      <div class="legend" id="themeLegend"></div>
+    </div>
+  </div>
+
+  <div class="glass bottom">
+    <div class="panel" id="tablePanel">
+      <div class="panelHeader"><h3>CTX · MEM · IO</h3><span>micro table</span></div>
+      <div class="table" id="dataTable"></div>
+    </div>
+    <div class="panel" id="heatPanel">
+      <div class="panelHeader"><h3>Heat Bands</h3><span>mem · permits · token</span></div>
+      <canvas id="heatCanvas" style="width:100%;height:160px;display:block"></canvas>
+    </div>
+    <div class="panel terminal" id="terminalPanel">
+      <div class="panelHeader"><h3>Glass Terminal</h3><span>console</span></div>
+      <div class="termLog" id="termLog"></div>
+      <div class="termPrompt"><span>C:\DNA&gt;</span><input id="termInput" autocomplete="off" spellcheck="false"></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="optics" aria-hidden="true"></canvas>
+<div class="modal" id="modal">
+  <div class="modalCard">
+    <div class="modalTop">
+      <h2 id="modalTitle">Panel Detail</h2>
+      <button class="close" id="closeModal">Close</button>
+    </div>
+    <div class="modalBody" id="modalBody"></div>
+    <ul class="modalList" id="modalList"></ul>
+    <div class="metaGrid" id="metaGrid"></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+  const root=document.documentElement;
+  const bg=document.getElementById('bg');
+  const bctx=bg.getContext('2d');
+  const optics=document.getElementById('optics');
+  const octx=optics.getContext('2d');
+  const glassSurfaces=[...document.querySelectorAll('.glass, .panel')];
+  const dnaCanvas=document.getElementById('dnaCanvas');
+  const swarmCanvas=document.getElementById('swarmCanvas');
+  const pulseCanvas=document.getElementById('pulseCanvas');
+  const radarCanvas=document.getElementById('radarCanvas');
+  const heatCanvas=document.getElementById('heatCanvas');
+  const termLog=document.getElementById('termLog');
+  const termInput=document.getElementById('termInput');
+  const metricStack=document.getElementById('metricStack');
+  const agentFeed=document.getElementById('agentFeed');
+  const chips=document.getElementById('chips');
+  const jobsList=document.getElementById('jobsList');
+  const microMatrix=document.getElementById('microMatrix');
+  const dataTable=document.getElementById('dataTable');
+  const tickerText=document.getElementById('tickerText');
+  const themeLegend=document.getElementById('themeLegend');
+  const modal=document.getElementById('modal');
+  const modalTitle=document.getElementById('modalTitle');
+  const modalBody=document.getElementById('modalBody');
+  const modalList=document.getElementById('modalList');
+  const metaGrid=document.getElementById('metaGrid');
+
+  const DPR=Math.max(1,Math.min(2,devicePixelRatio||1));
+  let W=0,H=0,last=performance.now();
+
+  const palettes=[
+    {name:'Aurora Prism', bg1:'#070e20', bg2:'#040916', c1:'#86ecff', c2:'#92ffe4', c3:'#c2acff', amber:'#ffd08c', red:'#ff7d98'},
+    {name:'Ice Hologram', bg1:'#101627', bg2:'#080d19', c1:'#b7e4ff', c2:'#9bffe7', c3:'#f0b4ff', amber:'#ffe29d', red:'#ff8ea2'},
+    {name:'Opaline Mint', bg1:'#07171c', bg2:'#041016', c1:'#9af4ff', c2:'#a1ffd0', c3:'#aebcff', amber:'#ffe9a8', red:'#ff879d'},
+    {name:'Berry Aurora', bg1:'#10091c', bg2:'#080615', c1:'#d3b4ff', c2:'#8fe3ff', c3:'#ffafe8', amber:'#ffd5a7', red:'#ff7f98'}
+  ];
+  let paletteIndex=0;
+  function current(){return palettes[paletteIndex]}
+  function applyThemeVars(){ const c=current(); root.style.setProperty('--c1',c.c1); root.style.setProperty('--c2',c.c2); root.style.setProperty('--c3',c.c3); root.style.setProperty('--amber',c.amber); root.style.setProperty('--red',c.red); }
+  function rgba(hex,a){ const h=hex.replace('#',''); const v=parseInt(h,16); return `rgba(${(v>>16)&255},${(v>>8)&255},${v&255},${a})`; }
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+
+  const modalInfo={
+    dna:{title:'DNA Liquid Chamber',body:'The chamber now sits behind crystal-clear polished panes. Reflections and rainbow dispersion live mostly on thin edges, leaving the actual data sharp and visible.',list:['Carriers move continuously across both strands.','Soft refractive rays pass behind the chamber.','The chamber uses layered highlights to fake reflection and depth.'],meta:[['Direction','Optically clear glass'],['Upgrade','Thin specular rim lighting'],['Meaning','DNA core / semantic flow']]},
+    swarm:{title:'Neural Swarm',body:'The swarm stays soft and fluid, but now sits over a brighter holo field.',list:['Nodes drift like buoyant droplets.','Links appear by proximity.','Glow scales gently with activity.'],meta:[['Role','Agent topology']]},
+    pulse:{title:'Pulse Glass',body:'A soft ECG-inspired beat drawn with fading trails.',list:['Healthy state glows aqua-green.','Low state shifts to red.','Tail fade keeps it alive, not static.'],meta:[['Role','Vitality']]},
+    radar:{title:'Soft Radar',body:'Radar blips now move on their own paths rather than staying static.',list:['Sweep arm glows softly.','Contacts orbit and pulse.','Motion is intentionally subtle.'],meta:[['Role','Peripheral scan']]},
+    metrics:{title:'Fluid Status',body:'Core load, verify, memory, permits, traffic, and scan are shown as liquid bars.',list:['Bars use brighter glass colors.','Shading is more crystalline than dirty frosted glass.'],meta:[['Role','Readable status']]},
+    jobs:{title:'Job Stream',body:'Job cards stay soft, rounded, and translucent.',list:['Click a job card to inspect it.','Progress bars respond continuously.'],meta:[['Role','Queue / work stream']]},
+    micro:{title:'Micro Panels',body:'Dense micro cards keep the interface rich while preserving the airy glass style.',list:['Each card behaves like a small info capsule.'],meta:[['Role','Dense telemetry']]},
+    table:{title:'CTX · MEM · IO',body:'The compact table remains as a tiny structured information block.',list:['Small rows, easy scan, still dense.'],meta:[['Role','Micro structured readout']]},
+    heat:{title:'Heat Bands',body:'Heat bands are rendered as luminous capsules rather than harsh industrial bars.',list:['Memory, permit, and token pressure each have their own hue.'],meta:[['Role','Pressure / heat overview']]},
+    terminal:{title:'Glass Terminal',body:'The terminal keeps the technical side grounded while the rest stays fluid and polished.',list:['Supports help, status, burst, drain, scan, theme, pause.'],meta:[['Role','Command entry']]}
+  };
+
+  const state={
+    paused:false, beatDead:false,
+    load:.56, queue:182, tokens:4400, verify:.88, memory:.61, permits:.48, traffic:126, scan:72,
+    logs:[], jobs:[], micro:[], agents:[], tableRows:[],
+    blobs:[], sparkles:[], rays:[], caustics:[], dnaParticles:[], swarmNodes:[], radarBlips:[],
+    ecg:{values:[], head:0,last:performance.now()}, pulses:[]
+  };
+
+  function initData(){
+    state.jobs=[
+      {id:'DNA-4812',status:'RUN',progress:74,desc:'Planner shard synthesis'},
+      {id:'DNA-4813',status:'VERIFY',progress:48,desc:'Acceptance test bundle'},
+      {id:'DNA-4814',status:'WAIT',progress:18,desc:'Queueing worker branch'},
+      {id:'DNA-4815',status:'PASS',progress:100,desc:'Memory consolidation'}
+    ];
+    state.micro=[['CTX MASS','84%'],['MEM SWAY','61%'],['PERMITS','48%'],['TOKEN ARC','4.4K'],['QUEUE','182'],['VERIFY','88%'],['SCAN','72%'],['TRAFFIC','126'],['SYNC','94%']];
+    state.agents=[['PLANNER','decompose',.74],['CODER','patch',.62],['VERIFIER','test',.84],['MEMORY','checkpoint',.57],['WATCHER','observe',.51],['ROUTER','dispatch',.79]];
+    state.tableRows=Array.from({length:8},(_,i)=>[`${i+1}.0${(i*3)%10}`,`${Math.round(rand(18,96))}`,`${Math.round(rand(12,88))}`]);
+    state.blobs=Array.from({length:7},()=>({x:Math.random(),y:Math.random(),r:rand(.12,.24),vx:rand(-.00006,.00006),vy:rand(-.00006,.00006),c:[current().c1,current().c2,current().c3][Math.floor(Math.random()*3)]}));
+    state.sparkles=Array.from({length:120},()=>({x:Math.random(),y:Math.random(),s:rand(.4,1.6),a:rand(.08,.38),v:rand(-.04,.04)}));
+    state.rays=Array.from({length:5},(_,i)=>({a:i*.6+Math.random(), speed:rand(.00004,.00008), width:rand(.12,.22), c:i%2?current().c1:current().c3 }));
+    state.caustics=Array.from({length:10},()=>({x:Math.random(), y:Math.random(), w:rand(.06,.18), h:rand(.01,.03), drift:rand(.00004,.00012), c:Math.random()>.5?current().c1:current().c2 }));
+    state.dnaParticles=Array.from({length:38},()=>({t:Math.random(),speed:rand(.00008,.00024),strand:Math.random()>.5?0:1}));
+    state.swarmNodes=Array.from({length:18},(_,i)=>({x:Math.random(),y:Math.random(),vx:rand(-.00010,.00010),vy:rand(-.00010,.00010),r:rand(2.4,5.0),c:i%3===0?current().c3:i%2===0?current().c1:current().c2,label:['PL','CO','VF','ME','WA','RO'][i%6]}));
+    state.sequenceNumbers=Array.from({length:10},()=>Math.round(rand(35,96)));
+    state.radarBlips=Array.from({length:4},(_,i)=>({a:Math.random()*Math.PI*2, r:rand(.24,.86), va:rand(.0005,.0012)*(i%2?1:-1), vr:rand(-.00008,.00008), c:i%2?current().amber:current().c1}));
+    state.ecg.values=new Array(220).fill(0); state.ecg.head=0; state.ecg.last=performance.now(); pushPulse();
+  }
+
+  function buildStaticUI(){ renderMetrics(); renderAgents(); renderJobs(); renderMicro(); renderTable(); renderTicker(); renderThemeLegend(); renderChips(); }
+  function renderChips(){ chips.innerHTML=''; [['Mode',state.beatDead?'critical':'live'],['Load',`${Math.round(state.load*100)}%`],['Tokens',`${Math.round(state.tokens)}`],['Queue',`${Math.round(state.queue)}`],['Theme',current().name]].forEach(([k,v])=>{ const d=document.createElement('div'); d.className='chip'; d.innerHTML=`<b style="font-weight:700">${k}</b> · ${v}`; chips.appendChild(d); }); }
+  function renderMetrics(){ metricStack.innerHTML=''; [['Load',state.load,''],['Verify',state.verify,'violet'],['Memory',state.memory,''],['Permits',state.permits,'amber'],['Traffic',state.traffic/180,''],['Scan',state.scan/100,'violet']].forEach(([label,val,cls])=>{ const row=document.createElement('div'); row.className='metricRow'; row.innerHTML=`<div style="display:flex;flex-direction:column;gap:7px;min-width:0"><div style="display:flex;justify-content:space-between;gap:10px"><span class="mini subtle">${label.toUpperCase()}</span><span class="mini">${Math.round(val*100)}%</span></div><div class="bar"><i class="${cls||''}" style="width:${Math.round(val*100)}%"></i></div></div>`; metricStack.appendChild(row); }); }
+  function renderAgents(){ agentFeed.innerHTML=''; state.agents.forEach(a=>{ const el=document.createElement('div'); el.className='feedLine'; el.innerHTML=`<div style="min-width:0"><b>${a[0]}</b><div class="mini subtle" style="margin-top:4px">${a[1]}</div></div><div style="width:96px"><div class="bar"><i style="width:${Math.round(a[2]*100)}%"></i></div><div class="mini subtle" style="text-align:right;margin-top:6px">${Math.round(a[2]*100)}%</div></div>`; agentFeed.appendChild(el); }); }
+  function renderJobs(){ jobsList.innerHTML=''; state.jobs.forEach((j,idx)=>{ const el=document.createElement('div'); el.className='job'; el.dataset.modal='jobs'; el.dataset.job=idx; el.innerHTML=`<div class="jobTop"><span>${j.id}</span><span class="status">${j.status}</span></div><div class="mini subtle" style="margin-bottom:8px">${j.desc}</div><div class="bar"><i style="width:${j.progress}%"></i></div><div class="mini subtle" style="margin-top:8px;text-align:right">${j.progress}%</div>`; jobsList.appendChild(el); }); }
+  function renderMicro(){ microMatrix.innerHTML=''; state.micro.forEach(m=>{ const el=document.createElement('div'); el.className='microCard'; el.innerHTML=`<b>${m[0]}</b><div class="value">${m[1]}</div><div class="mini subtle" style="margin-top:8px">live drift</div>`; microMatrix.appendChild(el); }); }
+  function renderTable(){ dataTable.innerHTML=''; const head=document.createElement('div'); head.className='trow'; head.innerHTML='<b>CTX</b><b>MEM</b><b>IO</b>'; dataTable.appendChild(head); state.tableRows.forEach(r=>{ const row=document.createElement('div'); row.className='trow'; row.innerHTML=`<span>${r[0]}</span><span>${r[1]}</span><span>${r[2]}</span>`; dataTable.appendChild(row); }); }
+  function renderTicker(){ const msg=['DNA CORE STABLE','HOLOGRAPHIC SHEEN ACTIVE','SOFT RAYFIELD ONLINE','SEMANTIC FIELD BREATHING','TOKEN PRESSURE LIVE','GLASS TELEMETRY DRIFT','AURORA LAYERS ONLINE']; tickerText.textContent=(' // '+msg.join(' // ')+' // ').repeat(8); }
+  function renderThemeLegend(){ themeLegend.innerHTML=''; const c=current(); [['primary',c.c1],['accent',c.c2],['violet',c.c3],['amber',c.amber]].forEach(([k,v])=>{ const el=document.createElement('div'); el.className='mini subtle'; el.innerHTML=`<span class="dot" style="background:${v};box-shadow:0 0 14px ${rgba(v,.5)}"></span>${k}`; themeLegend.appendChild(el); }); }
+  function log(msg){ const t=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); state.logs.push(`[${t}] ${msg}`); if(state.logs.length>60) state.logs.shift(); termLog.textContent=state.logs.slice(-14).join('\n'); termLog.scrollTop=termLog.scrollHeight; }
+
+  function resizeCanvas(c){ const r=c.getBoundingClientRect(); c.width=Math.max(1,Math.round(r.width*DPR)); c.height=Math.max(1,Math.round(r.height*DPR)); const x=c.getContext('2d'); x.setTransform(DPR,0,0,DPR,0,0); return {ctx:x,w:r.width,h:r.height}; }
+  let dnaCtx,swarmCtx,pulseCtx,radarCtx,heatCtx;
+  function resize(){ W=innerWidth; H=innerHeight; bg.width=Math.round(W*DPR); bg.height=Math.round(H*DPR); bctx.setTransform(DPR,0,0,DPR,0,0); optics.width=Math.round(W*DPR); optics.height=Math.round(H*DPR); octx.setTransform(DPR,0,0,DPR,0,0); dnaCtx=resizeCanvas(dnaCanvas); swarmCtx=resizeCanvas(swarmCanvas); pulseCtx=resizeCanvas(pulseCanvas); radarCtx=resizeCanvas(radarCanvas); heatCtx=resizeCanvas(heatCanvas); }
+
+  function pushPulse(dead=false){ state.pulses.push({dead,started:performance.now(),period:dead?1600:980,strength:dead?.16:1}); }
+  function ecgShape(t,str,dead){ const a=dead?.16:str; if(t<.05)return 0; if(t<.11)return lerp(0,.1*a,(t-.05)/.06); if(t<.15)return lerp(.1*a,-.16*a,(t-.11)/.04); if(t<.19)return lerp(-.16*a,.98*a,(t-.15)/.04); if(t<.23)return lerp(.98*a,-.28*a,(t-.19)/.04); if(t<.31)return lerp(-.28*a,.04*a,(t-.23)/.08); if(t<.48)return lerp(.04*a,.28*a,(t-.31)/.17); if(t<.65)return lerp(.28*a,0,(t-.48)/.17); return 0; }
+  function syncECG(now){ const ecg=state.ecg, steps=Math.max(1,Math.floor(((now-ecg.last)/1000)*150)); ecg.last=now; for(let s=0;s<steps;s++){ ecg.values[ecg.head]*=.08; let v=0; state.pulses.forEach(p=>{ const tt=(now-p.started)/p.period; if(tt>=0&&tt<1.2) v+=ecgShape(tt,p.strength,p.dead); }); ecg.values[ecg.head]=v; ecg.head=(ecg.head+1)%ecg.values.length; } for(let i=0;i<ecg.values.length;i++) ecg.values[i]*=.986; state.pulses=state.pulses.filter(p=>(now-p.started)<p.period*1.25); }
+
+  function update(dt,now){
+    if(!state.paused){
+      state.load=clamp(state.load+rand(-.008,.008)+(.57-state.load)*.02,.18,.92);
+      state.verify=clamp(state.verify+rand(-.01,.01)+(.88-state.verify)*.02,.22,.99);
+      state.memory=clamp(state.memory+rand(-.01,.01)+(.61-state.memory)*.02,.14,.95);
+      state.permits=clamp(state.permits+rand(-.01,.01)+(.48-state.permits)*.02,.08,.96);
+      state.traffic=clamp(state.traffic+rand(-3.5,3.5)+(126-state.traffic)*.02,20,220);
+      state.scan=clamp(state.scan+rand(-1.6,1.6)+(72-state.scan)*.02,3,100);
+      state.queue=clamp(state.queue+rand(-2.4,2.4)+(182-state.queue)*.02,10,420);
+      if(Math.random()<dt*1.5) pushPulse(state.beatDead);
+      if(Math.random()<dt*.7) state.tokens=clamp(state.tokens+rand(-140,160),800,12000);
+      if(Math.random()<dt*.22){ const j=state.jobs[Math.floor(Math.random()*state.jobs.length)]; if(j){ j.progress=clamp(j.progress+rand(-2.5,3.5),0,100); if(j.progress>97) j.status='PASS'; else if(j.progress<24) j.status='WAIT'; else if(j.progress<68) j.status='RUN'; else j.status='VERIFY'; }}
+      state.sparkles.forEach(s=>{ s.y+=s.v*dt*16; if(s.y<0)s.y=1; if(s.y>1)s.y=0; });
+      state.blobs.forEach(b=>{ b.x+=b.vx*dt*60; b.y+=b.vy*dt*60; if(b.x<-.05||b.x>1.05)b.vx*=-1; if(b.y<-.05||b.y>1.05)b.vy*=-1; });
+      state.rays.forEach(r=>{ r.a+=r.speed*dt*1000; });
+      state.caustics.forEach(c=>{ c.x=(c.x+c.drift*dt*1000)%1.2; if(c.x>1.1)c.x=-.1; });
+      state.dnaParticles.forEach(p=>{ p.t=(p.t+p.speed*dt*1000)%1; });
+      state.swarmNodes.forEach(n=>{ n.x+=n.vx*dt*60; n.y+=n.vy*dt*60; if(n.x<.06||n.x>.94)n.vx*=-1; if(n.y<.08||n.y>.92)n.vy*=-1; });
+      state.radarBlips.forEach(b=>{ b.a+=b.va*dt*1000; b.r=clamp(b.r+b.vr*dt*1000,.18,.9); if(b.r<=.18||b.r>=.9)b.vr*=-1; });
+    }
+    syncECG(now);
+    if(now-(state.lastDOMUpdate||0)>240){
+      state.lastDOMUpdate=now;
+      renderMetrics(); renderAgents(); renderJobs(); renderMicro(); renderChips();
+    }
+  }
+
+  function drawBackground(now){
+    const c=current();
+    const g=bctx.createLinearGradient(0,0,W,H); g.addColorStop(0,c.bg1); g.addColorStop(.48,c.bg2); g.addColorStop(1,'#050814'); bctx.fillStyle=g; bctx.fillRect(0,0,W,H);
+    // liquid blobs
+    state.blobs.forEach(b=>{ const x=b.x*W,y=b.y*H,r=b.r*Math.min(W,H); const rg=bctx.createRadialGradient(x,y,0,x,y,r); rg.addColorStop(0,rgba(b.c,.10)); rg.addColorStop(.4,rgba(b.c,.025)); rg.addColorStop(1,'rgba(0,0,0,0)'); bctx.fillStyle=rg; bctx.fillRect(x-r,y-r,r*2,r*2); });
+    // rays
+    state.rays.forEach((r,i)=>{ bctx.save(); bctx.translate(W*.5,H*.4); bctx.rotate(r.a); const grad=bctx.createLinearGradient(0,-H*.5,0,H*.5); grad.addColorStop(0,'rgba(255,255,255,0)'); grad.addColorStop(.4,rgba(r.c,.06)); grad.addColorStop(.5,rgba(r.c,.12)); grad.addColorStop(.6,rgba(r.c,.06)); grad.addColorStop(1,'rgba(255,255,255,0)'); bctx.fillStyle=grad; bctx.beginPath(); bctx.moveTo(-W*r.width*.08,-H*.5); bctx.lineTo(W*r.width*.08,-H*.5); bctx.lineTo(W*r.width*.18,H*.5); bctx.lineTo(-W*r.width*.18,H*.5); bctx.closePath(); bctx.filter='blur(20px)'; bctx.globalAlpha=.09; bctx.fill(); bctx.restore(); bctx.filter='none'; bctx.globalAlpha=1; });
+    // caustics
+    state.caustics.forEach(ct=>{ const x=ct.x*W,y=ct.y*H,w=ct.w*W,h=ct.h*H; const rg=bctx.createLinearGradient(x,y,x+w,y+h); rg.addColorStop(0,rgba(ct.c,.00)); rg.addColorStop(.5,rgba(ct.c,.025)); rg.addColorStop(1,rgba(ct.c,.00)); bctx.fillStyle=rg; bctx.filter='blur(10px)'; bctx.beginPath(); bctx.ellipse(x,y,w,h,Math.sin(now*.0004+x)*.8,0,Math.PI*2); bctx.fill(); bctx.filter='none'; });
+    // sparkles
+    state.sparkles.forEach(s=>{ bctx.globalAlpha=s.a*.35; bctx.fillStyle='white'; bctx.fillRect(s.x*W,s.y*H,s.s,s.s); }); bctx.globalAlpha=1;
+    if(mouse.on){ const rg=bctx.createRadialGradient(mouse.x,mouse.y,0,mouse.x,mouse.y,120); rg.addColorStop(0,rgba(c.c1,.07)); rg.addColorStop(.5,rgba(c.c3,.024)); rg.addColorStop(1,'rgba(0,0,0,0)'); bctx.fillStyle=rg; bctx.beginPath(); bctx.arc(mouse.x,mouse.y,120,0,Math.PI*2); bctx.fill(); }
+    mouse.fx=mouse.fx.filter(p=>{ p.life-=1; return p.life>0; });
+    mouse.fx.forEach(p=>{ bctx.fillStyle=`rgba(255,255,255,${p.life/p.max*.22})`; bctx.fillRect(p.x,p.y,2,2); p.x+=p.vx; p.y+=p.vy; });
+  }
+
+  function clearLocal(obj){ obj.ctx.clearRect(0,0,obj.w,obj.h); }
+  function drawDNA(now){
+    clearLocal(dnaCtx); const ctx=dnaCtx.ctx,w=dnaCtx.w,h=dnaCtx.h,c=current();
+    const midX=w*.5, top=26, bot=h-26, amp=Math.min(58,w*.18), A=[], B=[];
+    const rg=ctx.createRadialGradient(midX,h*.5,0,midX,h*.5,w*.52); rg.addColorStop(0,rgba(c.c1,.045)); rg.addColorStop(.45,rgba(c.c3,.018)); rg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=rg; ctx.fillRect(0,0,w,h);
+    // glass rays in chamber
+    for(let i=0;i<4;i++){ const px=w*(.18+i*.18)+Math.sin(now*.0004+i)*10; const grad=ctx.createLinearGradient(px,0,px+40,h); grad.addColorStop(0,'rgba(255,255,255,0)'); grad.addColorStop(.4,rgba(c.c1,.020)); grad.addColorStop(.5,rgba(c.c3,.035)); grad.addColorStop(.6,rgba(c.c2,.02)); grad.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=grad; ctx.fillRect(px-16,0,54,h); }
+    for(let i=0;i<210;i++){ const u=i/209, yy=lerp(top,bot,u), phase=u*11*Math.PI+now*.002; A.push({x:midX+Math.sin(phase)*amp,y:yy}); B.push({x:midX+Math.sin(phase+Math.PI)*amp,y:yy}); }
+    for(let i=0;i<A.length-1;i++){
+      ctx.strokeStyle=rgba(c.c1,.40); ctx.beginPath(); ctx.moveTo(A[i].x,A[i].y); ctx.lineTo(A[i+1].x,A[i+1].y); ctx.stroke();
+      ctx.strokeStyle=rgba(c.c2,.40); ctx.beginPath(); ctx.moveTo(B[i].x,B[i].y); ctx.lineTo(B[i+1].x,B[i+1].y); ctx.stroke();
+      if(i%3===0){ ctx.strokeStyle=`rgba(255,255,255,${0.06+(Math.sin(i*.22+now*.002)+1)/2*.11})`; ctx.beginPath(); ctx.moveTo(A[i].x,A[i].y); ctx.lineTo(B[i].x,B[i].y); ctx.stroke(); }
+      if(i%2===0){ ctx.shadowBlur=10; ctx.shadowColor=c.c1; ctx.fillStyle=rgba(c.c1,.95); ctx.beginPath(); ctx.arc(A[i].x,A[i].y,1.9,0,Math.PI*2); ctx.fill(); ctx.shadowColor=c.c2; ctx.fillStyle=rgba(c.c2,.95); ctx.beginPath(); ctx.arc(B[i].x,B[i].y,1.9,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; }
+    }
+    state.dnaParticles.forEach(p=>{ const arr=p.strand===0?A:B; const idx=Math.floor(p.t*(arr.length-1)); const pt=arr[idx]; const color=p.strand===0?c.c1:c.c3; ctx.fillStyle=rgba(color,.96); ctx.shadowBlur=16; ctx.shadowColor=color; ctx.beginPath(); ctx.arc(pt.x,pt.y,3.2,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
+    // chamber edge reflection
+    const edge=ctx.createLinearGradient(0,0,w,0); edge.addColorStop(0,'rgba(255,255,255,.20)'); edge.addColorStop(.12,'rgba(255,255,255,.02)'); edge.addColorStop(.88,'rgba(255,255,255,.02)'); edge.addColorStop(1,'rgba(255,255,255,.14)'); ctx.strokeStyle=edge; ctx.lineWidth=1.3; roundRect(ctx,10,10,w-20,h-20,22,false,true); ctx.lineWidth=1;
+    ctx.fillStyle='rgba(255,255,255,.62)'; ctx.font='11px SFMono-Regular,Consolas,monospace'; for(let i=0;i<10;i++){ ctx.fillText(`SEQ ${String(i).padStart(2,'0')}`,14,36+i*28); ctx.fillText(`${state.sequenceNumbers[i]}%`,w-48,36+i*28); }
+  }
+  function drawSwarm(now){
+    clearLocal(swarmCtx); const ctx=swarmCtx.ctx,w=swarmCtx.w,h=swarmCtx.h,c=current();
+    const glow=ctx.createRadialGradient(w*.5,h*.5,0,w*.5,h*.5,w*.65); glow.addColorStop(0,rgba(c.c1,.08)); glow.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=glow; ctx.fillRect(0,0,w,h);
+    const pts=state.swarmNodes.map(n=>({...n,x:n.x*w,y:n.y*h}));
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){ const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy); if(d<92 && ((i+j)%3!==0)){ ctx.strokeStyle=`rgba(255,255,255,${0.02+(92-d)/92*.10})`; ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke(); } }
+    pts.forEach((p,i)=>{ ctx.fillStyle=rgba(p.c,.95); ctx.shadowBlur=14; ctx.shadowColor=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; if(i%2===0){ ctx.fillStyle='rgba(255,255,255,.72)'; ctx.font='10px SFMono-Regular,Consolas,monospace'; ctx.fillText(p.label,p.x+8,p.y-6); } });
+  }
+  function drawPulse(now){
+    clearLocal(pulseCtx); const ctx=pulseCtx.ctx,w=pulseCtx.w,h=pulseCtx.h,c=current();
+    // reflective line haze
+    const rg=ctx.createLinearGradient(0,0,w,0); rg.addColorStop(0,'rgba(255,255,255,0)'); rg.addColorStop(.5,rgba(c.c1,.045)); rg.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=rg; ctx.fillRect(0,0,w,h);
+    const vals=state.ecg.values, head=state.ecg.head; for(let i=0;i<vals.length-1;i++){ const id1=(head+i)%vals.length,id2=(head+i+1)%vals.length; const alpha=Math.pow(i/vals.length,1.7); ctx.strokeStyle=state.beatDead?rgba(c.red,alpha*.95):rgba(c.c2,alpha*.96); const x1=i/vals.length*w, x2=(i+1)/vals.length*w, y1=h*.58-vals[id1]*h*.34, y2=h*.58-vals[id2]*h*.34; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  }
+  function drawRadar(now){
+    clearLocal(radarCtx); const ctx=radarCtx.ctx,w=radarCtx.w,h=radarCtx.h,c=current(); const cx=w/2, cy=h/2+6, r=Math.min(w,h)*.32;
+    ctx.strokeStyle='rgba(255,255,255,.08)'; for(let i=1;i<=3;i++){ ctx.beginPath(); ctx.arc(cx,cy,r*i/3,0,Math.PI*2); ctx.stroke(); }
+    const ang=now*.0018; const grad=ctx.createLinearGradient(cx,cy,cx+Math.cos(ang)*r,cy+Math.sin(ang)*r); grad.addColorStop(0,rgba(c.c1,.06)); grad.addColorStop(1,rgba(c.c1,.88)); ctx.strokeStyle=grad; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r); ctx.stroke(); ctx.lineWidth=1;
+    // soft sweep sector
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(ang); const sector=ctx.createRadialGradient(0,0,0,0,0,r); sector.addColorStop(0,rgba(c.c1,.14)); sector.addColorStop(.8,rgba(c.c1,.03)); sector.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=sector; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,-.18,.18); ctx.closePath(); ctx.fill(); ctx.restore();
+    state.radarBlips.forEach((b,i)=>{ const rr=r*b.r, x=cx+Math.cos(b.a)*rr, y=cy+Math.sin(b.a)*rr; const pulse=(Math.sin(now*.004+i)+1)/2; const color=b.c; ctx.fillStyle=rgba(color,.70+.25*pulse); ctx.shadowBlur=12+6*pulse; ctx.shadowColor=color; ctx.beginPath(); ctx.arc(x,y,2.2+1.3*pulse,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
+  }
+  function drawHeat(){
+    clearLocal(heatCtx); const ctx=heatCtx.ctx,w=heatCtx.w,h=heatCtx.h,c=current();
+    [['MEM HEAT',state.memory,c.c1],['PERMITS',state.permits,c.c3],['TOKEN FLOW',state.tokens/12000,c.amber]].forEach((lane,idx)=>{ const y=34+idx*42; ctx.fillStyle='rgba(255,255,255,.64)'; ctx.font='11px SFMono-Regular,Consolas,monospace'; ctx.fillText(lane[0],16,y-10); const seg=24, sw=(w-32)/seg; for(let i=0;i<seg;i++){ const active=(i/seg)<lane[1]; const flick=(Math.sin(performance.now()*.003+i)+1)/2; ctx.fillStyle=active?rgba(lane[2], .22+.42*flick):'rgba(255,255,255,.06)'; roundRect(ctx,16+i*sw,y,Math.max(4,sw-4),14,7,true,false); } });
+  }
+  function roundRect(ctx,x,y,w,h,r,fill,stroke){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); if(fill) ctx.fill(); if(stroke) ctx.stroke(); }
+
+  const mouse={x:0,y:0,on:false,fx:[]};
+  window.addEventListener('mousemove',e=>{ mouse.x=e.clientX; mouse.y=e.clientY; mouse.on=true; if(Math.random()<.8) mouse.fx.push({x:mouse.x,y:mouse.y,vx:rand(-.3,.3),vy:rand(-.3,.3),life:rand(12,24),max:24}); });
+  window.addEventListener('mouseleave',()=>mouse.on=false);
+
+
+  function drawOptics(now){
+    octx.clearRect(0,0,W,H);
+    // Actual specular glass reads as small moving glints on *edges*;
+    // the entire center stays see-through. Holo dispersion is only a rim.
+    for(let i=0;i<glassSurfaces.length;i++){
+      const el=glassSurfaces[i];
+      const r=el.getBoundingClientRect();
+      if(r.width<42||r.height<30||r.bottom<0||r.top>H) continue;
+      const x=r.left+.8,y=r.top+.8,w=r.width-1.6,h=r.height-1.6;
+      const rad=el.classList.contains('glass')?29:23;
+      const phase=(now*.000055+i*.117)%1;
+      const p=x+rad+(w-rad*2)*phase;
+      // Tri-color interference near the polished top rim
+      const grad=octx.createLinearGradient(p-75,y,p+75,y);
+      grad.addColorStop(0,'rgba(255,255,255,0)');
+      grad.addColorStop(.28,'rgba(124,225,255,.025)');
+      grad.addColorStop(.48,'rgba(236,244,255,.40)');
+      grad.addColorStop(.57,'rgba(202,154,255,.18)');
+      grad.addColorStop(.72,'rgba(255,207,166,.035)');
+      grad.addColorStop(1,'rgba(255,255,255,0)');
+      octx.strokeStyle=grad;octx.lineWidth=el.classList.contains('glass')?1.25:.85;
+      octx.beginPath();octx.moveTo(Math.max(p-68,x+rad),y+1.3);octx.lineTo(Math.min(p+68,x+w-rad),y+1.3);octx.stroke();
+      if(i%4===0){
+        const p2=(now*.000033+i*.31)%1;
+        const gy=y+rad+(h-2*rad)*p2;
+        const g2=octx.createLinearGradient(x,gy-42,x,gy+42);
+        g2.addColorStop(0,'rgba(255,255,255,0)');g2.addColorStop(.5,'rgba(158,231,255,.24)');g2.addColorStop(1,'rgba(255,255,255,0)');
+        octx.strokeStyle=g2;octx.lineWidth=.8;octx.beginPath();octx.moveTo(x+1,Math.max(y+rad,gy-42));octx.lineTo(x+1,Math.min(y+h-rad,gy+42));octx.stroke();
+      }
+    }
+  }
+
+  function animate(now){ const dt=Math.min(.05,(now-last)/1000); last=now; update(dt,now); drawBackground(now); drawDNA(now); drawSwarm(now); drawPulse(now); drawRadar(now); drawHeat(now); drawOptics(now); requestAnimationFrame(animate); }
+
+  function openModal(key, extra){ const data=modalInfo[key]; if(!data) return; modalTitle.textContent=extra?.title || data.title; modalBody.textContent=extra?.body || data.body; modalList.innerHTML=''; (extra?.list || data.list || []).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; modalList.appendChild(li); }); metaGrid.innerHTML=''; (extra?.meta || data.meta || []).forEach(([k,v])=>{ const m=document.createElement('div'); m.className='meta'; m.innerHTML=`<b>${k}</b><span>${v}</span>`; metaGrid.appendChild(m); }); modal.classList.add('show'); }
+  document.getElementById('closeModal').onclick=()=>modal.classList.remove('show');
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('show'); });
+
+  document.getElementById('dnaPanel').onclick=()=>openModal('dna');
+  document.getElementById('swarmPanel').onclick=()=>openModal('swarm');
+  document.getElementById('pulsePanel').onclick=()=>openModal('pulse');
+  document.getElementById('radarPanel').onclick=()=>openModal('radar');
+  document.getElementById('metricsPanel').onclick=()=>openModal('metrics');
+  document.getElementById('tablePanel').onclick=()=>openModal('table');
+  document.getElementById('heatPanel').onclick=()=>openModal('heat');
+  document.getElementById('terminalPanel').onclick=(e)=>{if(e.target===termInput||e.target.closest('.termPrompt'))return;openModal('terminal');};
+  document.getElementById('microPanel').onclick=()=>openModal('micro');
+  document.getElementById('jobsPanel').onclick=(e)=>{ const item=e.target.closest('.job'); if(item){ const j=state.jobs[+item.dataset.job]; openModal('jobs',{title:`${j.id} · ${j.status}`,body:j.desc,list:[`Progress ${j.progress}%`,`Queue snapshot ${Math.round(state.queue)}`,`Token reserve ${Math.round(state.tokens)}`,`Verify confidence ${Math.round(state.verify*100)}%`],meta:[['Job ID',j.id],['State',j.status],['Progress',`${j.progress}%`],['Queue',`${Math.round(state.queue)}`]]}); } else openModal('jobs'); };
+
+  function cycleTheme(){ paletteIndex=(paletteIndex+1)%palettes.length; applyThemeVars(); renderThemeLegend(); renderChips(); log(`theme shifted -> ${current().name}`); }
+  document.getElementById('themeBtn').onclick=cycleTheme;
+  document.getElementById('pauseBtn').onclick=()=>{ state.paused=!state.paused; document.getElementById('pauseBtn').textContent=state.paused?'Resume':'Pause'; log(state.paused?'simulation paused':'simulation resumed'); };
+  document.getElementById('scanBtn').onclick=()=>{ state.scan=0; log('deep scan initialized'); let t=0; const id=setInterval(()=>{ if(state.paused) return; t+=1; state.scan=clamp(state.scan+rand(7,16),0,100); if(t>8||state.scan>=100){ state.scan=100; clearInterval(id); log('deep scan complete'); } },220); };
+  document.getElementById('drainBtn').onclick=()=>{ const amount=Math.round(rand(1800,6500)); state.tokens=clamp(state.tokens-amount,100,12000); state.beatDead=state.tokens<1400; pushPulse(state.beatDead); log(`token drain :: ${amount}`); };
+  document.getElementById('burstBtn').onclick=()=>{ state.traffic=clamp(state.traffic+rand(20,55),0,220); state.queue=clamp(state.queue+rand(12,32),0,420); pushPulse(false); log('orchestration burst emitted'); };
+  termInput.addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const raw=termInput.value.trim(); termInput.value=''; if(!raw) return; log('> '+raw); const cmd=raw.toLowerCase(); if(cmd==='help') log('commands: help, status, burst, drain, scan, theme, pause'); else if(cmd==='status') log(`load=${Math.round(state.load*100)}% queue=${Math.round(state.queue)} tokens=${Math.round(state.tokens)} verify=${Math.round(state.verify*100)}% theme=${current().name}`); else if(cmd==='burst') document.getElementById('burstBtn').click(); else if(cmd==='drain') document.getElementById('drainBtn').click(); else if(cmd==='scan') document.getElementById('scanBtn').click(); else if(cmd==='theme') cycleTheme(); else if(cmd==='pause') document.getElementById('pauseBtn').click(); else log('unknown command'); });
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape') modal.classList.remove('show'); if(e.key==='`') termInput.focus(); });
+  window.addEventListener('resize',resize);
+
+  applyThemeVars(); initData(); buildStaticUI(); resize();
+  log('crystal aurora v3 initialized');
+  log('clear panes online :: blur below 1px / rim-only holography');
+  log('radar contacts are now moving');
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
