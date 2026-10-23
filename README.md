@@ -11,3 +11,7 @@ Public archive of experimental DNA interface designs. No DNA runtime source code
 The FUI uses simulated example measurements. To connect real DNA data later, use JSON snapshots and SSE events described in the guide.
 
 Interactive preview entry point: [index.html](index.html). If GitHub Pages is not enabled, use repository **Settings → Pages → Deploy from a branch → main / (root)**.
+
+## Claude experiments
+
+Five additional distinct Claude-generated interactive Canvas concepts (six source uploads, including one duplicate) are available in the [Claude collection](claude/README.md) and featured in the gallery index. The original source HTML files were preserved unchanged.
