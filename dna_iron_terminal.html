@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNA // IRON TERMINAL — Raster FUI</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050807}
+canvas{display:block;width:100vw;height:100vh;cursor:crosshair;touch-action:none}
+</style></head><body><canvas id="screen" aria-label="Interactive DNA retro command console"></canvas>
+<script>
+(()=>{
+'use strict';
+const c=document.getElementById('screen'),g=c.getContext('2d',{alpha:false});
+const VW=1600,VH=900;
+const themes=[
+ {name:'PHOSPHOR / WARM',bg:'#060908',surface:'#0a100c',inset:'#060c09',edge:'#314337',divider:'#27372d',ink:'#d5e5cd',primary:'#a5ed83',secondary:'#8b9e8a',warning:'#f1b667',danger:'#ef786b',dark:'#14241a'},
+ {name:'PAPER / INK',bg:'#0b0c0b',surface:'#131514',inset:'#0b0d0b',edge:'#565d52',divider:'#41473e',ink:'#e5e6d7',primary:'#dddcb8',secondary:'#9a9e93',warning:'#e8aa63',danger:'#e78776',dark:'#282b26'},
+ {name:'AMBER / UNIX',bg:'#0c0906',surface:'#151007',inset:'#0b0905',edge:'#564128',divider:'#423522',ink:'#e2cfaf',primary:'#f3be69',secondary:'#a48a65',warning:'#ffda88',danger:'#db6f58',dark:'#292011'},
+ {name:'COBALT / PUNCH',bg:'#080b11',surface:'#0c1320',inset:'#080e18',edge:'#304e69',divider:'#293e54',ink:'#d3e5ee',primary:'#87c9eb',secondary:'#7799b1',warning:'#f5b473',danger:'#ff8577',dark:'#142838'}
+];
+let C=themes[0],W=1600,H=900,scale=1,ox=0,oy=0,last=performance.now(),sim=0,acc=0,hover={x:-1,y:-1};
+const state={theme:0,paused:false,step:0,job:'DNA-1084',version:'r0.9.7',stage:2,work:16,workMax:24,queue:124,tokenMax:50000,tokens:17220,calls:729,workers:8,verify:92,checks:12,checkTotal:14,latency:186,alarms:1,focusTerm:false,termInput:'',terminal:[],events:[],switches:[],drops:[],shards:Array.from({length:12*8},(_,i)=>i%17===0?'ERR':i%11===0?'SLEEP':i%5===0?'DONE':'RUN'),history:Array.from({length:72},(_,i)=>.35+.16*Math.sin(i*.25)+.06*Math.cos(i*.7)),modal:null,modalTab:'OVERVIEW',seq:0};
+const stageDefs=[
+ {id:'00',name:'INTAKE',detail:'Normalize the user request and bind run context.',tasks:['Capture command envelope','Attach repository boundary','Resolve dependency versions','Freeze input contract','Register run version'],outputs:['request.packet','scope.contract'],tests:['schema.valid = true','identity resolved']},
+ {id:'01',name:'SPECIFY',detail:'Define precise machine-checkable expectations before coding.',tasks:['Define acceptance predicates','Set execution budget','Generate stage plan','Validate command permissions','Freeze test manifest'],outputs:['plan.tree.json','acceptance.tests.json'],tests:['5/5 specification checks','no ambiguous acceptance']},
+ {id:'02',name:'EXECUTE',detail:'Dispatch small bounded worker batches and record actual artifacts.',tasks:['Acquire worker leases','Dispatch 24 bounded units','Gather worker output','Merge candidate patches','Retry bounded exceptions','Seal result manifest'],outputs:['patches/*','workers.manifest'],tests:['16/24 work units complete','retry ceiling <= 2','lease owner registered']},
+ {id:'03',name:'VERIFY',detail:'Run deterministic tests. Unverified agent claims do not count.',tasks:['Load frozen acceptance tests','Run deterministic harness','Compare exact outputs','Persist evidence by case','Return failures for repair'],outputs:['tests.report.json','diffs/'],tests:['12/14 checks passed','2 checks queued','0 unsupported assertions']},
+ {id:'04',name:'COMMIT',detail:'Store approved outputs and compact the durable run memory.',tasks:['Check artifact integrity','Publish verified outputs','Checkpoint memory','Record provenance and version','Emit completion event'],outputs:['release.bundle','memory.snapshot'],tests:['artifact hash stable','checkpoint written']},
+ {id:'05',name:'CLOSE',detail:'Release leases and publish a concise operator summary.',tasks:['Release worker leases','Flush remaining event tape','Archive run history','Deliver final operator report'],outputs:['run.summary','audit.tape'],tests:['no open leases','run state finalized']}
+];
+const agents=[['PLANNER','SPEC',74],['CODER','EXEC',88],['VERIFIER','TEST',62],['ANALYST','DIFF',41],['MEMORY','STORE',34],['WATCHER','WAKE',12]];
+const boxes={status:{x:16,y:112,w:316,h:130},agents:{x:16,y:252,w:316,h:236},log:{x:16,y:498,w:316,h:194},budget:{x:16,y:702,w:316,h:136},plan:{x:344,y:112,w:920,h:316},verify:{x:344,y:438,w:446,h:192},context:{x:800,y:438,w:464,h:192},signals:{x:344,y:640,w:532,h:198},terminal:{x:886,y:640,w:378,h:198},shards:{x:1276,y:112,w:308,h:184},scheduler:{x:1276,y:306,w:308,h:188},memory:{x:1276,y:504,w:308,h:145},pulse:{x:1276,y:659,w:308,h:179}};
+const hits=[];
+function rect(x,y,w,h,color){g.fillStyle=color;g.fillRect(x,y,w,h)}
+function stroke(x,y,w,h,color=C.edge,lw=1){g.lineWidth=lw;g.strokeStyle=color;g.strokeRect(Math.round(x)+.5,Math.round(y)+.5,Math.round(w)-1,Math.round(h)-1)}
+function line(x1,y1,x2,y2,color=C.divider,lw=1){g.beginPath();g.moveTo(x1+.5,y1+.5);g.lineTo(x2+.5,y2+.5);g.strokeStyle=color;g.lineWidth=lw;g.stroke()}
+function txt(s,x,y,size=11,color=C.ink,weight='400',align='left'){g.textAlign=align;g.textBaseline='top';g.fillStyle=color;g.font=`${weight} ${size}px Consolas,"DejaVu Sans Mono",monospace`;g.fillText(String(s),x,y)}
+function lineClip(x,y,w,h,fn){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();fn();g.restore()}
+function hit(x,y,w,h,cb,tip){hits.push({x,y,w,h,cb,tip})}
+function labelCode(x,y,t,color=C.primary){rect(x,y,4,13,color);txt(t,x+10,y,10,C.ink,'700')}
+function panel(k,title,right='',mark='SYS'){
+ const p=boxes[k]; rect(p.x,p.y,p.w,p.h,C.surface);stroke(p.x,p.y,p.w,p.h,C.edge);rect(p.x,p.y,p.w,25,C.dark);
+ line(p.x,p.y+25,p.x+p.w,p.y+25,C.edge);rect(p.x+1,p.y+1,3,23,C.primary);
+ txt(`${mark} / ${title}`,p.x+13,p.y+7,10,C.ink,'700');if(right)txt(right,p.x+p.w-10,p.y+7,9,C.secondary,'400','right');
+ hit(p.x,p.y,p.w,25,()=>openPanel(k),'Inspect '+title);return p;
+}
+function hatch(x,y,w,h,ink=C.divider){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();for(let i=-h;i<w+h;i+=8)line(x+i,y+h,x+i+h,y,ink);g.restore()}
+function bar(x,y,w,h,f,color=C.primary){rect(x,y,w,h,C.dark);rect(x,y,Math.max(0,w*Math.max(0,Math.min(1,f))),h,color)}
+function dot(x,y,r,color=C.primary){g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill()}
+function titleBlock(x,y,t,n){txt(t,x,y,10,C.secondary);txt(n,x,y+15,19,C.ink,'700')}
+function check(x,y,status){stroke(x,y,10,10,status===1?C.primary:status===-1?C.danger:C.divider);if(status===1){line(x+2,y+5,x+4,y+7,C.primary,1);line(x+4,y+7,x+9,y+1,C.primary,1)}else if(status===-1)txt('!',x+3,y,9,C.danger,'700')}
+function rtext(str,x,y,w,col=C.secondary,speed=36){const font=11;g.font=`${font}px Consolas,monospace`;let line=str+'   /   ';const ww=g.measureText(line).width||700;const off=(sim*speed)%ww;lineClip(x,y,w,13,()=>{for(let i=-1;i<Math.ceil(w/ww)+2;i++)txt(line,x+i*ww-off,y,font,col)})}
+function fixedTick(){
+ state.step++;state.seq++;
+ const spent=72+(state.step*73)%347;state.tokens+=spent;state.calls+=1+(state.step%4===0?2:0);
+ state.queue=Math.max(26,124 + Math.round(22*Math.sin(state.step*.28))-Math.floor(state.step/4)%18);
+ state.latency=Math.max(52,186+Math.round(25*Math.cos(state.step*.22)));
+ state.verify=state.stage===3?Math.min(100,86+(state.step%11)):92;
+ state.history.shift();state.history.push(.25+state.queue/600);
+ if(state.step%4===0){const idx=(state.step*17)%state.shards.length;state.shards[idx]='DONE';addEvent('WORKER',`shard ${String(idx).padStart(3,'0')} sealed`)}
+ if(state.step%9===0){addEvent('WATCH',`handoff token at seq ${String(state.seq).padStart(5,'0')}`)}
+ if(state.step%13===0){addEvent('VERIFY','acceptance suite resumed')}
+ if(state.step%3===0&&state.stage===2)state.work=Math.min(state.workMax,state.work+1);
+ if(state.work>=state.workMax&&state.stage===2){state.stage=3;addEvent('STAGE','EXECUTE completed -> VERIFY');}
+ if(state.stage===3&&state.step%24===0){state.stage=4;addEvent('STAGE','VERIFY completed -> COMMIT')}
+ state.schedulerTick=state.step%32;
+}
+function addEvent(type,msg){const t=String(state.seq).padStart(5,'0');state.events.unshift({t,type,msg});state.events=state.events.slice(0,25);state.terminal.push(`[${t}] ${type.padEnd(6)} ${msg}`);state.terminal=state.terminal.slice(-32)}
+function pulse(spend){const count=Math.max(3,Math.min(94,Math.round(spend/65)));state.tokens+=spend;state.calls++;for(let i=0;i<count;i++){const b=boxes.budget;state.drops.push({x:b.x+21+(i%14)*18,y:b.y+92+Math.floor(i/14)*5,vy:-.45-(i%7)*.21,vx:(((i*13)%11)-5)*.19,life:1,token:i%7===0?'#':'·'});}addEvent('TOKENS',`${spend} tokens charged : ${count} ink fragments`)}
+function drawHeader(){
+ rect(0,0,VW,VH,C.bg);rect(16,12,1568,58,C.surface);stroke(16,12,1568,58,C.edge);rect(16,12,8,58,C.primary);
+ txt('D N A',36,21,21,C.primary,'700');line(151,18,151,62,C.edge);txt('/ /  EXECUTION OPERATING SYSTEM',168,24,15,C.ink,'700');txt('CONTRACT-DRIVEN   •   VERSIONED   •   EVENT-BASED',168,47,10,C.secondary);
+ let x=820;const status=[['MODE',state.paused?'HALT':'SIM'],['RUN',state.job],['VER',state.version],['CYCLE',String(state.step).padStart(5,'0')]];
+ status.forEach(([a,b])=>{txt(a,x,21,9,C.secondary);txt(b,x,40,13,a==='MODE'?C.warning:C.ink,'700');x+=a==='RUN'?145:100});
+ const btns=[['RUN',()=>{state.paused=!state.paused}],['TICK',()=>fixedTick()],['SPEND',()=>pulse(1800)],['THEME',nextTheme],['HELP',()=>{state.modal={key:'help'};state.modalTab='OVERVIEW'}]];
+ let bx=16;btns.forEach(([name,cb],i)=>{const w=i===4?98:100;const x=bx;rect(x,78,w,26,i===0&&!state.paused?C.primary:C.dark);stroke(x,78,w,26,i===0&&!state.paused?C.primary:C.edge);txt(name,x+w/2,85,11,i===0&&!state.paused?C.bg:C.ink,'700','center');hit(x,78,w,26,cb,name);bx+=w+8});
+ txt('SHUTTLE:  F1 LOG  /  F2 PLAN  /  F3 CHECKS  /  F4 TERMINAL',573,87,10,C.secondary);
+ rtext('WORK ORDER #1084 / CONTRACT FIRST / BOUNDED RETRIES / NO LLM POLLING / EVENT WAKEUPS / CHECKPOINT READY',1010,85,576,C.primary,44);
+}
+function drawStatus(){const p=panel('status','RUN STATUS','CONTROL / 01');
+ labelCode(p.x+14,p.y+36,'CURRENT RUN',C.primary);
+ txt('STABLE',p.x+p.w-15,p.y+35,13,C.primary,'700','right');
+ line(p.x+14,p.y+55,p.x+p.w-14,p.y+55);
+ const measures=[['JOBS', '01'],['WORKERS','08'],['QUEUE',String(state.queue).padStart(3,'0')],['WARN','01']];
+ measures.forEach((v,i)=>{const x=p.x+15+i*74;txt(v[0],x,p.y+68,9,C.secondary);txt(v[1],x,p.y+82,17,i===3?C.warning:C.ink,'700')});
+ txt(`UPTIME  ${String(Math.floor(sim/60)).padStart(2,'0')}:${String(Math.floor(sim%60)).padStart(2,'0')}`,p.x+15,p.y+110,10,C.secondary);
+}
+function drawAgents(){const p=panel('agents','AGENT REGISTRY','06 ROLES');
+ agents.forEach(([name,role,load],i)=>{const y=p.y+35+i*31;const amp=i===2?state.verify:load+Math.sin(sim*.8+i)*5;rect(p.x+9,y-1,p.w-18,28,i===2?C.dark:C.inset);txt(`0${i+1}`,p.x+17,y+5,10,C.secondary);txt(name,p.x+43,y+3,11,C.ink,'700');txt(role,p.x+152,y+5,9,C.secondary);bar(p.x+218,y+9,72,5,amp/100,i===3?C.warning:C.primary);hit(p.x+11,y-1,p.w-22,28,()=>openPanel('agents',i),name)})}
+function drawLog(){const p=panel('log','EVENT JOURNAL','APPEND ONLY');
+ lineClip(p.x+10,p.y+30,p.w-20,p.h-39,()=>{const lines=state.events.slice(0,9);lines.forEach((e,i)=>{const y=p.y+35+i*17;txt(e.t,p.x+13,y,9,C.warning);txt(e.type,p.x+59,y,9,e.type==='WARN'?C.danger:C.primary);txt(e.msg.slice(0,28),p.x+116,y,9,C.secondary)});});
+}
+function drawBudget(){const p=panel('budget','TOKEN LEDGER','PROPORTIONAL DEBIT');
+ txt(`${Math.round(state.tokens).toLocaleString()}`,p.x+15,p.y+36,29,C.ink,'700');txt('/ '+state.tokenMax.toLocaleString(),p.x+160,p.y+50,12,C.secondary);
+ const f=state.tokens/state.tokenMax;bar(p.x+15,p.y+72,p.w-30,12,f,C.warning);
+ const cells=42,gap=2,bw=(p.w-30)/cells;for(let i=0;i<cells;i++)rect(p.x+15+i*bw,p.y+88,bw-1,9,i/cells<f?C.warning:C.dark);
+ txt('COST OUTPUT  //  1 GLYPH ≈ 65 TOKENS',p.x+15,p.y+111,9,C.secondary);
+ state.drops.forEach(d=>{txt(d.token,d.x,d.y,11,C.warning)});
+}
+function drawPlan(){const p=panel('plan','HIERARCHICAL EXECUTION TREE','CLICK A STAGE TO INSPECT','PLAN');
+ rect(p.x+14,p.y+34,p.w-28,35,C.inset);stroke(p.x+14,p.y+34,p.w-28,35,C.divider);
+ txt('ROOT / DNA-1084',p.x+27,p.y+43,12,C.primary,'700');txt('MIGRATE 1,024 FILES  //  24 WORK UNITS  //  TEST FIRST',p.x+260,p.y+44,10,C.ink);
+ line(p.x+458,p.y+77,p.x+458,p.y+p.h-18,C.edge);
+ txt('PHASE GRAPH',p.x+22,p.y+83,10,C.secondary,'700');txt('CURRENT PHASE  /  INTERNAL CHECKLIST',p.x+480,p.y+83,10,C.secondary,'700');
+ const sx=p.x+23,sy=p.y+114;
+ line(sx+15,sy-2,sx+15,sy+6*30,C.edge,2);
+ stageDefs.forEach((s,i)=>{
+ const y=sy+i*30,active=i===state.stage,done=i<state.stage, col=done?C.primary:active?C.warning:C.secondary;
+ rect(sx+3,y-1,420,27,active?C.dark:C.surface);if(active)rect(sx+3,y-1,4,27,C.warning);
+ stroke(sx+5,y+6,15,15,col);if(done)txt('×',sx+9,y+6,11,C.primary,'700');else if(active)rect(sx+10,y+11,5,5,C.warning);
+ txt(s.id,sx+34,y+7,11,col,'700');txt(s.name,sx+68,y+6,12,active?C.ink:col,'700');
+ txt(done?'PASS':active?'ACTIVE':'HOLD',sx+396,y+8,10,col,'700','right');
+ if(active){rect(sx+240,y+12,90,4,C.edge);rect(sx+240,y+12,90*(state.work/state.workMax),4,C.warning)}
+ hit(sx+3,y-1,421,28,()=>openStage(i),s.name+' details');
+ });
+ const def=stageDefs[state.stage];txt(`${def.id} / ${def.name.toUpperCase()}`,p.x+482,p.y+106,18,C.warning,'700');
+ txt('EXECUTION CONTRACT  ·  BOUNDED AGENTS',p.x+483,p.y+131,9,C.secondary);
+ const doneNum=state.stage===2?Math.floor(state.work/6):state.stage>=3?def.tasks.length:0;
+ def.tasks.forEach((s,i)=>{const y=p.y+154+i*21;check(p.x+482,y,i<doneNum?1:0);txt(s.slice(0,43),p.x+501,y-1,10,i<doneNum?C.ink:C.secondary)});
+ line(p.x+481,p.y+284,p.x+p.w-17,p.y+284);
+ txt('ON FAILED CHECK → REPAIR UNIT → REVERIFY',p.x+483,p.y+292,10,C.warning);
+}
+function drawVerify(){const p=panel('verify','DETERMINISTIC HARNESS','CASE RESULTS','TEST');
+ txt(`PASS  ${state.checks}/${state.checkTotal}`,p.x+15,p.y+40,20,C.primary,'700');txt('02 QUEUED',p.x+p.w-13,p.y+42,11,C.warning,'700','right');
+ const cols=14,bw=(p.w-30-(cols-1)*5)/cols;
+ for(let i=0;i<cols;i++){const x=p.x+15+i*(bw+5),y=p.y+79;rect(x,y,bw,22,i<state.checks?C.primary:C.dark);stroke(x,y,bw,22,i<state.checks?C.primary:C.warning);if(i<state.checks)txt('✓',x+bw/2-3,y+5,10,C.bg,'700')}
+ const rows=[['TST.01','contract',1],['TST.02','snapshot',1],['TST.03','filesystem',1],['TST.04','worker retries',0]];
+ rows.forEach((r,i)=>{const y=p.y+111+i*17;txt(r[0],p.x+15,y,10,C.secondary);txt(r[1],p.x+86,y,10,C.ink);txt(r[2]?'PASS':'WAIT',p.x+p.w-13,y,10,r[2]?C.primary:C.warning,'700','right')});
+}
+function drawContext(){const p=panel('context','CONTEXT ALLOCATOR','MEMORY BUDGET','CTX');
+ const stats=[['PROMPT SPACE',63],['RETRIEVAL',25],['CACHE',48],['CHECKPOINT',91]];
+ stats.forEach(([l,v],i)=>{const y=p.y+38+i*31;txt(l,p.x+15,y,10,C.secondary);txt(`${v}%`,p.x+164,y,11,C.ink,'700');bar(p.x+205,y+4,p.w-222,9,v/100,i===3?C.warning:C.primary)});
+ line(p.x+14,p.y+166,p.x+p.w-14,p.y+166);txt('COMPACTION WAKEUP : EVENT DRIVEN',p.x+15,p.y+175,9,C.warning)
+}
+function drawSignals(){const p=panel('signals','EVENT BUS // MULTICHANNEL','SAMPLED OUTPUT','BUS');
+ const x=p.x+15,y=p.y+43,w=p.w-29,band=36;
+ const waves=[{name:'ROUTE',c:C.primary,f:1.2},{name:'VERIFY',c:C.warning,f:1.7},{name:'MEMORY',c:C.ink,f:2.1}];
+ waves.forEach((wave,k)=>{let yy=y+k*48;txt(wave.name,x,yy-1,10,C.secondary);line(x+70,yy+20,x+w,yy+20,C.divider);g.strokeStyle=wave.c;g.lineWidth=1.35;g.beginPath();for(let i=0;i<=400;i++){const t=i/400,px=x+70+t*(w-80);const sig=Math.sin(t*16*wave.f+sim*1.8)*4+Math.sin(t*51+sim*2.3+k)*2;const sp=Math.exp(-Math.pow((t-((sim*.08+.2*k)%1))*36,2))*(k===1?18:9);const py=yy+20+sig-sp;if(i===0)g.moveTo(px,py);else g.lineTo(px,py)}g.stroke();});
+ txt('PACKET BURSTS MAP TO TRACE HEIGHT, NOT DECORATIVE GLOW',x,p.y+p.h-15,9,C.secondary);
+}
+function drawTerminal(){const p=panel('terminal','COMMAND CONSOLE',state.focusTerm?'INPUT ACTIVE [ESC]':'PRESS ` TO TYPE','TTY');
+ const ls=state.terminal.slice(-8);lineClip(p.x+13,p.y+32,p.w-26,130,()=>ls.forEach((s,i)=>txt(s.slice(0,50),p.x+14,p.y+34+i*17,10,i===ls.length-1?C.primary:C.secondary)));
+ rect(p.x+12,p.y+p.h-40,p.w-24,27,C.inset);stroke(p.x+12,p.y+p.h-40,p.w-24,27,C.edge);
+ txt('dna:/>',p.x+20,p.y+p.h-33,11,C.primary,'700');txt(state.termInput+(state.focusTerm&&Math.floor(sim*1.8)%2===0?'_':''),p.x+85,p.y+p.h-33,11,C.ink);
+ hit(p.x+12,p.y+40,p.w-24,p.h-47,()=>{state.focusTerm=true},'Focus command console');
+}
+function drawShards(){const p=panel('shards','SHARD / WORKER MATRIX','12 × 08','SWM');
+ const xx=p.x+15,yy=p.y+38,cellW=20,cellH=13,gap=3;
+ for(let r=0;r<8;r++){for(let col=0;col<12;col++){const n=r*12+col,s=state.shards[n],color=s==='DONE'?C.primary:s==='ERR'?C.danger:s==='SLEEP'?C.divider:C.secondary;rect(xx+col*(cellW+gap),yy+r*(cellH+3),cellW,cellH,color);if(s==='ERR')line(xx+col*(cellW+gap),yy+r*16,xx+col*(cellW+gap)+cellW,yy+r*16+cellH,C.bg)}}
+ txt('■ EXEC   ■ DONE   ■ WAIT   ■ ERR',p.x+15,p.y+p.h-17,9,C.secondary);
+}
+function drawScheduler(){const p=panel('scheduler','EVENT SCHEDULER','ZERO MODEL POLLING','BUS');
+ const items=[['WORKER_LEASE','00:12'],['WAKE_EVENT','00:08'],['RETRY_BACKOFF','00:21'],['TIMEOUT_GATE','00:47'],['MEM_FLUSH','00:32']];
+ items.forEach(([name,v],i)=>{const y=p.y+38+i*26;txt(name,p.x+13,y,10,i===2?C.warning:C.ink,'700');txt(v,p.x+p.w-13,y,10,C.secondary,'400','right');
+ rect(p.x+13,y+14,p.w-26,5,C.dark);rect(p.x+13,y+14,(p.w-26)*((i*.17+sim*.015)%1),5,i===2?C.warning:C.primary)});
+ txt('SLEEP → CALLBACK → RESUME',p.x+13,p.y+p.h-18,10,C.primary);
+}
+function drawMemory(){const p=panel('memory','MEMORY / I-O INDEX','RING BUFFER','MEM');
+ const vals=[['CTX',183,'k'],['MEM',61,'%'],['I/O',74,'%']];const cw=(p.w-24)/3;
+ vals.forEach(([a,b,s],i)=>{const x=p.x+12+cw*i;txt(a,x+5,p.y+39,9,C.secondary);txt(`${b}${s}`,x+5,p.y+56,22,C.ink,'700');bar(x+5,p.y+93,cw-17,8,i===0?b/400:b/100,i===1?C.warning:C.primary)});
+ txt('STORE / RESTORE / EVICT',p.x+14,p.y+121,10,C.secondary);
+}
+function drawPulse(){const p=panel('pulse','DAEMON HEARTBEAT','HEALTH  /  01','PUL');
+ const left=p.x+13,top=p.y+44,w=p.w-26,h=58;
+ line(left,top+h*.65,left+w,top+h*.65,C.divider);
+ const period=2.7,phase=(sim%period)/period;
+ g.strokeStyle=C.primary;g.lineWidth=1.8;g.beginPath();for(let i=0;i<=w;i++){const t=i/w,del=(t-phase+1)%1;let val=0;
+ function triangular(x,c,width,amp){return amp*Math.max(0,1-Math.abs(x-c)/width)}
+ val+=triangular(del,.04,.02,-4)+triangular(del,.075,.017,26)+triangular(del,.097,.015,-9)+triangular(del,.21,.05,6);
+ let y=top+h*.65-val;if(i===0)g.moveTo(left+i,y);else g.lineTo(left+i,y)}g.stroke();
+ dot(left+w*phase,top+h*.65,3,C.warning);
+ txt('SIGNAL / STABLE',left,p.y+122,10,C.primary,'700');txt('LAST EVENT',p.x+p.w-13,p.y+122,10,C.secondary,'400','right');
+ const pulseW=p.w-26;for(let i=0;i<30;i++){const q=(state.step+i)%30;rect(left+i*pulseW/30,p.y+144,pulseW/30-2,8,q%7===0?C.warning:q%3===0?C.primary:C.dark)}
+}
+function drawTicker(){const p={x:16,y:850,w:1568,h:31};rect(p.x,p.y,p.w,p.h,C.surface);stroke(p.x,p.y,p.w,p.h,C.edge);rect(p.x,p.y,100,p.h,C.primary);txt('EVENT TAPE',p.x+12,p.y+8,11,C.bg,'700');
+ const messages=state.events.slice(0,6).map(e=>`${e.t} ${e.type} ${e.msg}`).join('    ▸    ');
+ rtext((messages||'NO NEW EVENTS')+'  ▸  DNA OPERATING SYSTEM  ▸  EVENT DRIVEN  ▸  CONTRACT FIRST',p.x+118,p.y+8,p.w-127,C.ink,62);
+}
+function nextTheme(){state.theme=(state.theme+1)%themes.length;C=themes[state.theme];addEvent('THEME',C.name)}
+function openStage(i){state.modal={key:'stage',index:i};state.modalTab='OVERVIEW';state.focusTerm=false}
+function openPanel(k,index=null){state.modal={key:k,index};state.modalTab='OVERVIEW';state.focusTerm=false}
+function closeModal(){state.modal=null}
+function drawModal(){if(!state.modal)return;hits.length=0;
+ rect(0,0,VW,VH,'rgba(2,5,3,.90)');
+ const x=325,y=113,w=950,h=666;rect(x,y,w,h,C.surface);stroke(x,y,w,h,C.primary,2);rect(x,y,w,42,C.dark);rect(x,y,7,42,C.primary);
+ const key=state.modal.key,idx=state.modal.index;
+ let title='',intro='',tasks=[],details=[],stats=[];
+ if(key==='stage'){const def=stageDefs[idx];title=`STAGE ${def.id} // ${def.name}`;intro=def.detail;tasks=def.tasks;details=def.tests;stats=[['STATE',idx<state.stage?'PASS':idx===state.stage?'ACTIVE':'HOLD'],['OUTPUT',def.outputs.join(' + ')],['PARENT','DNA-1084 / RUN CONTRACT']];}
+ else if(key==='help'){title='OPERATOR HELP // KEY MAP';intro='This is a fully drawn Canvas 2D terminal interface. No glass or lighting layers; UI is flat raster instrumentation.';tasks=['Click stage in central plan to inspect','Click panel header to inspect its contents','Use RUN to pause / resume the simulation','Use TICK to advance one work iteration','Use SPEND to debit 1,800 simulated tokens','Press ` or click console to enter commands','Press ESC to dismiss inspection'];details=['F1 journal  · F2 plan  · F3 tests  · F4 terminal','Commands: help, status, tick, spend 500, fault, recover, theme, pause'];}
+ else if(key==='agents'){title=idx===null?'AGENT REGISTRY // SCHEDULING':`AGENT ${agents[idx][0]} // ${agents[idx][1]}`;intro='Bounded specialists receive deterministic task contracts, emit result packets, and sleep while jobs run; no repetitive model polling.';tasks=['Receive task manifest','Acquire bounded lease','Execute assigned work','Emit artifact plus accounting','Report verifiable completion','Sleep until event wakeup'];details=['Dispatch priority: dynamic','Retry limit: two per task','Context locally bounded'];}
+ else {const titles={status:'RUN STATUS / STATUS BUS',log:'EVENT JOURNAL / APPEND ONLY',budget:'TOKEN LEDGER / COST ACCOUNTING',plan:'EXECUTION TREE / HIERARCHY',verify:'TEST HARNESS / EVIDENCE',context:'CONTEXT ALLOCATOR / LIMITS',signals:'EVENT BUS / MULTICHANNEL',terminal:'COMMAND CONSOLE / OPERATOR',shards:'SWARM SHARDS / MATRIX',scheduler:'EVENT SCHEDULER / TIMERS',memory:'MEMORY / I-O INDEX',pulse:'DAEMON HEARTBEAT'};title=titles[key]||key;intro='Operator inspection of the selected subsystem in the DNA deterministic runtime demonstration.';tasks=['Receive relevant runtime signals','Maintain bounded deterministic state','Record machine-readable evidence','Render telemetry into this instrument','Escalate if the contract is violated'];details=['Source: in-memory simulated events','Ready for a real DNA runtime event adapter','Inspecting does not mutate runtime state'];stats=[['STATUS','SIMULATED'],['TYPE',key.toUpperCase()]]}
+ txt(title,x+22,y+13,17,C.ink,'700');txt('ESC / CLOSE',x+w-20,y+16,11,C.warning,'700','right');hit(x+w-150,y,150,42,closeModal,'Close');
+ txt('INSPECTOR  /  DNA-1084  /  CONTRACT VIEW',x+25,y+60,11,C.secondary);
+ let tabx=x+25;['OVERVIEW','CHECKLIST','CONTRACT'].forEach(t=>{const selected=state.modalTab===t,w=150;rect(tabx,y+91,w,30,selected?C.primary:C.dark);stroke(tabx,y+91,w,30,selected?C.primary:C.edge);txt(t,tabx+w/2,y+99,11,selected?C.bg:C.ink,'700','center');hit(tabx,y+91,w,30,()=>state.modalTab=t,'Switch tab');tabx+=158;});
+ line(x+25,y+141,x+w-25,y+141);
+ if(state.modalTab==='OVERVIEW'){
+ txt('WHAT THIS DOES',x+30,y+169,13,C.primary,'700');wrapText(intro,x+30,y+198,600,18,C.ink);
+ txt('OPERATOR METADATA',x+657,y+170,11,C.warning,'700');const ss=stats.length?stats:[['STATE','NOMINAL'],['PARENT','DNA-1084'],['DATA','SIMULATION']];ss.forEach(([a,b],i)=>{txt(a,x+657,y+200+i*53,10,C.secondary);wrapText(b,x+657,y+218+i*53,255,14,C.ink)});
+ txt('CURRENT ACTIONS',x+30,y+314,13,C.primary,'700');tasks.forEach((t,i)=>{check(x+32,y+347+i*33,i<3?1:0);txt(t,x+58,y+345+i*33,12,i<3?C.ink:C.secondary)})
+ }else if(state.modalTab==='CHECKLIST'){
+ txt('WORK ITEMS / MACHINE EVIDENCE',x+30,y+162,12,C.primary,'700');tasks.forEach((t,i)=>{const yy=y+201+i*48;rect(x+25,yy,895,40,i%2?C.surface:C.inset);check(x+39,yy+12,i<3?1:0);txt(`TASK.${String(i+1).padStart(2,'0')}`,x+65,yy+13,10,C.warning);txt(t,x+175,yy+12,12,C.ink)})
+ }else{
+ txt('CONTRACT & ACCEPTANCE',x+30,y+163,13,C.primary,'700');details.forEach((t,i)=>{const yy=y+210+i*45;txt(`CHECK / ${String(i+1).padStart(2,'0')}`,x+32,yy,10,C.warning);txt(t,x+200,yy,12,C.ink);line(x+30,yy+23,x+w-35,yy+23)});
+ }
+ line(x+25,y+h-63,x+w-25,y+h-63);txt('UI SURFACE // RASTER80 / COMMAND UNIT',x+30,y+h-43,10,C.secondary);txt('THIS IS AN INTERACTIVE SIMULATION — NOT LIVE DNA DATA',x+w-25,y+h-43,10,C.warning,'700','right');
+}
+function wrapText(s,x,y,w,lh,col){g.font='12px Consolas,monospace';let cur='',ln=0;for(const word of s.split(' ')){const candidate=cur?cur+' '+word:word;if(g.measureText(candidate).width>w){txt(cur,x,y+ln*lh,12,col);cur=word;ln++}else cur=candidate}if(cur)txt(cur,x,y+ln*lh,12,col)}
+function handleCommand(raw){const cmd=raw.trim();state.termInput='';if(!cmd)return;addEvent('CMD',`dna:/> ${cmd}`);const [a,b]=cmd.split(/\s+/);switch(a.toLowerCase()){
+ case 'help':openPanel('help');break;case 'tick':fixedTick();break;case 'pause':state.paused=!state.paused;break;case 'spend':pulse(Math.min(12000,Math.max(65,Number(b)||500)));break;
+ case 'theme':nextTheme();break;case 'fault':state.alarms=3;addEvent('WARN','fault injected in simulator');break;case 'recover':state.alarms=0;addEvent('INFO','simulated recovery accepted');break;
+ case 'status':addEvent('INFO',`queue=${state.queue} tok=${state.tokens} check=${state.checks}/${state.checkTotal}`);break;
+ default:addEvent('ERROR',`unknown command ${a}. try help`);
+ }}
+function frame(now){const dt=Math.min(.075,(now-last)/1000);last=now;if(!state.paused){sim+=dt;acc+=dt;if(acc>1.35){acc=0;fixedTick();}}
+ state.drops.forEach(d=>{if(!state.paused){d.y+=d.vy;d.x+=d.vx;d.life-=dt}});state.drops=state.drops.filter(d=>d.life>0);
+ g.setTransform(1,0,0,1,0,0);g.fillStyle=C.bg;g.fillRect(0,0,c.width,c.height);g.setTransform(scale,0,0,scale,ox,oy);
+ hits.length=0;
+ drawHeader();drawStatus();drawAgents();drawLog();drawBudget();drawPlan();drawVerify();drawContext();drawSignals();drawTerminal();drawShards();drawScheduler();drawMemory();drawPulse();drawTicker();
+ if(state.modal)drawModal();
+ // Thin continuous hatch lines only (never translucent panel fog).
+ line(16,890,1584,890,C.edge);txt(`FORMAT 80:32  /  13 INSTRUMENTS  /  ${themes[state.theme].name}  /  60Hz RASTER`,16,883,8,C.secondary);
+ requestAnimationFrame(frame)
+}
+function resize(){const dpr=Math.min(devicePixelRatio||1,2);const w=innerWidth,h=innerHeight;c.width=Math.floor(w*dpr);c.height=Math.floor(h*dpr);scale=Math.min(w/VW,h/VH)*dpr;ox=(c.width-VW*scale)/2;oy=(c.height-VH*scale)/2}
+function coords(e){const r=c.getBoundingClientRect(),dpr=c.width/r.width;return{x:((e.clientX-r.left)*dpr-ox)/scale,y:((e.clientY-r.top)*dpr-oy)/scale}}
+c.addEventListener('click',e=>{const {x,y}=coords(e);const h=hits.slice().reverse().find(h=>x>=h.x&&y>=h.y&&x<=h.x+h.w&&y<=h.y+h.h);if(h)h.cb();else if(state.modal)closeModal();else state.focusTerm=false});
+c.addEventListener('mousemove',e=>{const {x,y}=coords(e);hover={x,y};const h=hits.slice().reverse().find(h=>x>=h.x&&y>=h.y&&x<=h.x+h.w&&y<=h.y+h.h);c.style.cursor=h?'pointer':'crosshair';c.title=h?h.tip:''});
+window.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){if(state.modal)closeModal();else{state.focusTerm=false;state.termInput=''}return}
+ if(state.modal)return;
+ if(e.key==='`'||e.key==='F4'){e.preventDefault();state.focusTerm=true;return}
+ if(e.key==='F1'){e.preventDefault();openPanel('log');return}if(e.key==='F2'){e.preventDefault();openPanel('plan');return}if(e.key==='F3'){e.preventDefault();openPanel('verify');return}
+ if(state.focusTerm){if(e.key==='Enter'){handleCommand(state.termInput);return}if(e.key==='Backspace'){state.termInput=state.termInput.slice(0,-1);return}if(e.key.length===1&&state.termInput.length<52){state.termInput+=e.key;return}}
+ if(e.key===' '){e.preventDefault();state.paused=!state.paused}if(e.key==='ArrowRight'&&state.paused)fixedTick();
+});
+window.addEventListener('resize',resize);
+resize();
+['RUN START / version r0.9.7 bound','Acceptance contract frozen','Agent leases initialized','Worker shard graph prepared','Execution stage active','12 tests pass / 2 queued','Event-driven wakeups enabled','Runtime console ready'].forEach((t,i)=>{state.seq++;addEvent(['RUN','SPEC','AGENT','SWARM','PLAN','VERIFY','WATCH','TTY'][i],t)});
+requestAnimationFrame(frame);
+})();
+</script></body></html>
