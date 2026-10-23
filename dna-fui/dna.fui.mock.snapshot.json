@@ -1,0 +1,868 @@
+{
+  "schemaVersion": "dna.fui/v1",
+  "snapshotId": "snap-0042-0288",
+  "generatedAt": "2026-10-17T16:50:00Z",
+  "lastEventId": "evt-000288",
+  "source": {
+    "mode": "mock",
+    "label": "EXAMPLE DATA"
+  },
+  "system": {
+    "name": "DNA",
+    "environment": "dev",
+    "runtimeVersion": "m0.2-dev",
+    "state": "running",
+    "heartbeatAt": "2026-10-17T16:50:00Z",
+    "uptimeSeconds": 2912,
+    "coreId": "supervisor",
+    "metrics": {
+      "cpuPct": 32.8,
+      "memoryPct": 46.2,
+      "queueDepth": 8,
+      "apiSuccessPct": 99.2,
+      "workerCount": 8,
+      "activeWorkerCount": 3,
+      "maxParallel": 8,
+      "hostMemoryUsedGb": 7.4,
+      "hostMemoryTotalGb": 16
+    }
+  },
+  "focus": {
+    "jobId": "job-0042",
+    "jobName": "DNA UI integration",
+    "processInstanceId": "pi-0042",
+    "workflowInstanceId": "wfi-0042",
+    "workflowVersion": 3,
+    "createdByRuntimeVersion": "m0.2-dev"
+  },
+  "billing": {
+    "currency": "USD",
+    "inputTokens": 128400,
+    "outputTokens": 36740,
+    "totalCostUsd": 1.1834,
+    "costEstimated": false,
+    "budgetUsd": 5.0,
+    "byModel": [
+      {
+        "modelId": "gpt6",
+        "inputTokens": 17400,
+        "outputTokens": 6110,
+        "costUsd": 0.89
+      },
+      {
+        "modelId": "gpt6mini",
+        "inputTokens": 111000,
+        "outputTokens": 30630,
+        "costUsd": 0.2934
+      }
+    ]
+  },
+  "models": [
+    {
+      "id": "gpt6",
+      "name": "GPT-6",
+      "state": "active",
+      "requests": 14,
+      "tokens": 23510,
+      "costUsd": 0.89,
+      "latencyMs": 830,
+      "reasoningRating": 5
+    },
+    {
+      "id": "gpt6mini",
+      "name": "GPT-6 Mini",
+      "state": "active",
+      "requests": 32,
+      "tokens": 89150,
+      "costUsd": 0.33,
+      "latencyMs": 410,
+      "reasoningRating": 3
+    },
+    {
+      "id": "rules",
+      "name": "Deterministic checks",
+      "state": "online",
+      "requests": 58,
+      "tokens": 0,
+      "costUsd": 0,
+      "latencyMs": 33,
+      "reasoningRating": null
+    }
+  ],
+  "agents": [
+    {
+      "id": "supervisor",
+      "name": "DNA CORE",
+      "kind": "system",
+      "state": "running",
+      "model": "DNA Runtime",
+      "tokens": 0,
+      "toolCalls": 0,
+      "lastEvent": "Working on dna core"
+    },
+    {
+      "id": "planner",
+      "name": "PLANNER",
+      "kind": "agent",
+      "state": "idle",
+      "model": "GPT-6",
+      "tokens": 7460,
+      "toolCalls": 0,
+      "lastEvent": "Waiting for work"
+    },
+    {
+      "id": "research",
+      "name": "RESEARCH",
+      "kind": "agent",
+      "state": "completed",
+      "model": "GPT-6 Mini",
+      "tokens": 3890,
+      "toolCalls": 0,
+      "lastEvent": "Waiting for work"
+    },
+    {
+      "id": "browser",
+      "name": "WEB TOOL",
+      "kind": "tool",
+      "state": "idle",
+      "model": "Browser",
+      "tokens": 0,
+      "toolCalls": 11,
+      "lastEvent": "Waiting for work"
+    },
+    {
+      "id": "coder",
+      "name": "CODER",
+      "kind": "agent",
+      "state": "running",
+      "model": "GPT-6",
+      "tokens": 19720,
+      "toolCalls": 3,
+      "lastEvent": "Working on coder"
+    },
+    {
+      "id": "validator",
+      "name": "VALIDATOR",
+      "kind": "agent",
+      "state": "waiting",
+      "model": "Rules + Tests",
+      "tokens": 0,
+      "toolCalls": 2,
+      "lastEvent": "Waiting for work"
+    },
+    {
+      "id": "memory",
+      "name": "MEMORY",
+      "kind": "service",
+      "state": "idle",
+      "model": "SQL + Vector",
+      "tokens": 0,
+      "toolCalls": 19,
+      "lastEvent": "Waiting for work"
+    },
+    {
+      "id": "scheduler",
+      "name": "SCHEDULER",
+      "kind": "system",
+      "state": "running",
+      "model": "Deterministic Scheduler",
+      "tokens": 0,
+      "toolCalls": 0,
+      "lastEvent": "Working on scheduler"
+    }
+  ],
+  "topology": {
+    "edges": [
+      {
+        "from": "scheduler",
+        "to": "supervisor"
+      },
+      {
+        "from": "supervisor",
+        "to": "planner"
+      },
+      {
+        "from": "planner",
+        "to": "research"
+      },
+      {
+        "from": "research",
+        "to": "browser"
+      },
+      {
+        "from": "research",
+        "to": "supervisor"
+      },
+      {
+        "from": "supervisor",
+        "to": "coder"
+      },
+      {
+        "from": "coder",
+        "to": "validator"
+      },
+      {
+        "from": "validator",
+        "to": "supervisor"
+      },
+      {
+        "from": "supervisor",
+        "to": "memory"
+      },
+      {
+        "from": "memory",
+        "to": "coder"
+      },
+      {
+        "from": "scheduler",
+        "to": "memory"
+      },
+      {
+        "from": "browser",
+        "to": "coder"
+      }
+    ]
+  },
+  "jobs": [
+    {
+      "id": "job-0042",
+      "title": "DNA UI integration",
+      "state": "running",
+      "progress": 0.52,
+      "currentTaskId": "code",
+      "startedAt": "2026-10-17T16:18:00Z",
+      "waitingReason": null,
+      "runtimeVersionAtCreation": "m0.2-dev",
+      "processInstanceId": "pi-0042"
+    },
+    {
+      "id": "job-0041",
+      "title": "Index technical notes",
+      "state": "completed",
+      "progress": 1.0,
+      "currentTaskId": null,
+      "startedAt": "2026-10-17T15:04:00Z",
+      "waitingReason": null,
+      "runtimeVersionAtCreation": "m0.2-dev",
+      "processInstanceId": "pi-0041"
+    }
+  ],
+  "workflow": {
+    "id": "wf-0042",
+    "name": "Code generation + verification",
+    "version": 3,
+    "state": "running",
+    "planRevision": 2,
+    "nodes": [
+      {
+        "id": "plan",
+        "label": "PLAN",
+        "state": "completed",
+        "progress": 1,
+        "dependsOn": [],
+        "attemptCount": 1,
+        "agentId": "planner",
+        "nodeInstanceId": "ni-plan-0042",
+        "lastAttemptId": "attempt-plan-02"
+      },
+      {
+        "id": "research",
+        "label": "RESEARCH",
+        "state": "completed",
+        "progress": 1,
+        "dependsOn": [
+          "plan"
+        ],
+        "attemptCount": 2,
+        "agentId": "research",
+        "nodeInstanceId": "ni-research-0042",
+        "lastAttemptId": "attempt-research-02"
+      },
+      {
+        "id": "search",
+        "label": "SEARCH",
+        "state": "completed",
+        "progress": 1,
+        "dependsOn": [
+          "plan"
+        ],
+        "attemptCount": 1,
+        "agentId": "browser",
+        "nodeInstanceId": "ni-search-0042",
+        "lastAttemptId": "attempt-search-02"
+      },
+      {
+        "id": "code",
+        "label": "CODE",
+        "state": "running",
+        "progress": 0.46,
+        "dependsOn": [
+          "research",
+          "search"
+        ],
+        "attemptCount": 2,
+        "agentId": "coder",
+        "nodeInstanceId": "ni-code-0042",
+        "lastAttemptId": "attempt-code-02"
+      },
+      {
+        "id": "test",
+        "label": "TEST",
+        "state": "waiting",
+        "progress": null,
+        "dependsOn": [
+          "code"
+        ],
+        "attemptCount": 0,
+        "agentId": "validator",
+        "nodeInstanceId": "ni-test-0042",
+        "lastAttemptId": null
+      },
+      {
+        "id": "report",
+        "label": "REPORT",
+        "state": "queued",
+        "progress": 0,
+        "dependsOn": [
+          "test"
+        ],
+        "attemptCount": 0,
+        "agentId": "planner",
+        "nodeInstanceId": "ni-report-0042",
+        "lastAttemptId": null
+      }
+    ]
+  },
+  "nodeAttempts": [
+    {
+      "id": "attempt-code-02",
+      "nodeInstanceId": "ni-code-0042",
+      "attemptNumber": 2,
+      "state": "running",
+      "workerId": "worker-03",
+      "leaseExpiresAt": "2026-10-17T16:50:30Z",
+      "startedAt": "2026-10-17T16:48:40Z",
+      "failureCode": null
+    },
+    {
+      "id": "attempt-research-02",
+      "nodeInstanceId": "ni-research-0042",
+      "attemptNumber": 2,
+      "state": "completed",
+      "workerId": "worker-02",
+      "leaseExpiresAt": null,
+      "startedAt": "2026-10-17T16:34:11Z",
+      "failureCode": null
+    }
+  ],
+  "tools": [
+    {
+      "id": "browser",
+      "name": "Browser",
+      "calls": 11,
+      "successes": 10,
+      "failures": 1,
+      "avgLatencyMs": 711
+    },
+    {
+      "id": "sql",
+      "name": "SQL Server",
+      "calls": 23,
+      "successes": 23,
+      "failures": 0,
+      "avgLatencyMs": 24
+    },
+    {
+      "id": "shell",
+      "name": "Shell",
+      "calls": 12,
+      "successes": 11,
+      "failures": 1,
+      "avgLatencyMs": 240
+    }
+  ],
+  "tests": {
+    "suiteId": "suite-0042",
+    "specVersion": "revision-2",
+    "state": "partial",
+    "passed": 7,
+    "failed": 1,
+    "skipped": 0,
+    "total": 8,
+    "items": [
+      {
+        "id": "unit",
+        "name": "Unit tests",
+        "state": "passed",
+        "command": "npm test",
+        "result": "pass",
+        "durationMs": 1102
+      },
+      {
+        "id": "integration",
+        "name": "Integration tests",
+        "state": "failed",
+        "command": "npm run test:integration",
+        "result": "1 assertion failed",
+        "durationMs": 3210
+      }
+    ]
+  },
+  "telemetry": {
+    "timeWindowSeconds": 120,
+    "loadPct": [
+      22,
+      25,
+      29,
+      26,
+      30,
+      37,
+      31,
+      27,
+      35,
+      32,
+      39,
+      34,
+      32,
+      36,
+      41,
+      33,
+      30,
+      32,
+      35,
+      37,
+      33,
+      29,
+      35,
+      32
+    ],
+    "apiLatencyMs": [
+      18,
+      22,
+      20,
+      27,
+      25,
+      19,
+      33,
+      28,
+      23,
+      17,
+      19,
+      21,
+      24,
+      22,
+      20,
+      26,
+      31,
+      21,
+      19,
+      18,
+      20,
+      21,
+      25,
+      23
+    ],
+    "queueDepth": [
+      9,
+      9,
+      8,
+      8,
+      8,
+      7,
+      9,
+      8,
+      8,
+      7,
+      7,
+      8
+    ]
+  },
+  "swarm": {
+    "jobId": "job-0042",
+    "state": "running",
+    "totalItems": 12000,
+    "doneItems": 7100,
+    "runningItems": 800,
+    "queuedItems": 3900,
+    "failedItems": 200,
+    "batchSize": 500,
+    "workerCount": 8,
+    "batches": [
+      {
+        "id": "batch-01",
+        "index": 1,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-02",
+        "index": 2,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-03",
+        "index": 3,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-04",
+        "index": 4,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-05",
+        "index": 5,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-06",
+        "index": 6,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-07",
+        "index": 7,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-08",
+        "index": 8,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-09",
+        "index": 9,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-10",
+        "index": 10,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-11",
+        "index": 11,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-12",
+        "index": 12,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-13",
+        "index": 13,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-14",
+        "index": 14,
+        "state": "completed",
+        "totalItems": 500,
+        "doneItems": 500,
+        "runningItems": 0,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-15",
+        "index": 15,
+        "state": "running",
+        "totalItems": 500,
+        "doneItems": 100,
+        "runningItems": 300,
+        "queuedItems": 0,
+        "failedItems": 100,
+        "workerIds": [
+          "worker-08"
+        ]
+      },
+      {
+        "id": "batch-16",
+        "index": 16,
+        "state": "running",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 500,
+        "queuedItems": 0,
+        "failedItems": 0,
+        "workerIds": [
+          "worker-01"
+        ]
+      },
+      {
+        "id": "batch-17",
+        "index": 17,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 400,
+        "failedItems": 100,
+        "workerIds": []
+      },
+      {
+        "id": "batch-18",
+        "index": 18,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-19",
+        "index": 19,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-20",
+        "index": 20,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-21",
+        "index": 21,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-22",
+        "index": 22,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-23",
+        "index": 23,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      },
+      {
+        "id": "batch-24",
+        "index": 24,
+        "state": "queued",
+        "totalItems": 500,
+        "doneItems": 0,
+        "runningItems": 0,
+        "queuedItems": 500,
+        "failedItems": 0,
+        "workerIds": []
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "id": "alert-001",
+      "level": "warning",
+      "title": "API rate limit nearing threshold",
+      "state": "open",
+      "at": "2026-10-17T16:50:00Z"
+    },
+    {
+      "id": "alert-002",
+      "level": "info",
+      "title": "Retry recovered after lease expiry",
+      "state": "resolved",
+      "at": "2026-10-17T16:50:00Z"
+    }
+  ],
+  "humanActions": [
+    {
+      "id": "human-001",
+      "kind": "approval",
+      "title": "Review production deployment",
+      "status": "waiting",
+      "jobId": "job-0042"
+    }
+  ],
+  "recentEvents": [
+    {
+      "id": "evt-000281",
+      "seq": 281,
+      "at": "2026-10-17T16:49:30Z",
+      "type": "node.started",
+      "agentId": "coder",
+      "taskId": "code",
+      "message": "Implementation attempt 2 started",
+      "severity": "info"
+    },
+    {
+      "id": "evt-000282",
+      "seq": 282,
+      "at": "2026-10-17T16:49:31Z",
+      "type": "tool.called",
+      "agentId": "coder",
+      "taskId": "code",
+      "message": "Shell execution started",
+      "severity": "info"
+    },
+    {
+      "id": "evt-000283",
+      "seq": 283,
+      "at": "2026-10-17T16:49:32Z",
+      "type": "tool.completed",
+      "agentId": "coder",
+      "taskId": "code",
+      "message": "Shell exit 0 / 238 ms",
+      "severity": "info"
+    },
+    {
+      "id": "evt-000284",
+      "seq": 284,
+      "at": "2026-10-17T16:49:33Z",
+      "type": "usage.updated",
+      "agentId": "coder",
+      "taskId": "code",
+      "message": "Billing ledger updated",
+      "severity": "info"
+    },
+    {
+      "id": "evt-000285",
+      "seq": 285,
+      "at": "2026-10-17T16:49:34Z",
+      "type": "test.failed",
+      "agentId": "validator",
+      "taskId": "test",
+      "message": "One previous test failure recorded",
+      "severity": "warning"
+    },
+    {
+      "id": "evt-000286",
+      "seq": 286,
+      "at": "2026-10-17T16:49:35Z",
+      "type": "repair.started",
+      "agentId": "coder",
+      "taskId": "code",
+      "message": "Repair from failed test evidence",
+      "severity": "info"
+    },
+    {
+      "id": "evt-000287",
+      "seq": 287,
+      "at": "2026-10-17T16:49:36Z",
+      "type": "node.running",
+      "agentId": "coder",
+      "taskId": "code",
+      "message": "Writing patch",
+      "severity": "info"
+    },
+    {
+      "id": "evt-000288",
+      "seq": 288,
+      "at": "2026-10-17T16:49:37Z",
+      "type": "worker.heartbeat",
+      "agentId": "scheduler",
+      "taskId": null,
+      "message": "Worker lease renewed",
+      "severity": "info"
+    }
+  ]
+}
