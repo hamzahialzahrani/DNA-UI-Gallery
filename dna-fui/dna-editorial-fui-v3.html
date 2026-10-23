@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DNA / BIO-SYSTEM INTERFACE — FUI CONCEPT</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+  body { font-family: Inter, Arial, sans-serif; background:#eae9e5; }
+  #viewport { width: 100%; height: 100%; overflow: auto; overscroll-behavior: contain; }
+  #artboard { position: relative; width: max(100%, 1320px); height: max(100%, 790px); min-width: 1320px; min-height: 790px; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #help { position:absolute; bottom: 12px; right: 20px; font: 10px/1.4 ui-monospace,Consolas,monospace; color:transparent; pointer-events:none; }
+  canvas:focus-visible {outline:2px solid #ff631e;outline-offset:-4px}
+  .shade{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,14,16,.31);backdrop-filter:blur(4px) saturate(.93);-webkit-backdrop-filter:blur(4px) saturate(.93)}
+  .shade[hidden]{display:none}
+  .dialog{width:min(540px,96vw);max-height:90vh;overflow:auto;background:var(--modal-bg,#f2f1ed);color:var(--modal-text,#151613);border:1px solid var(--modal-line,#c5c5be);box-shadow:0 20px 80px rgba(0,0,0,.24);font:12px/1.65 ui-monospace,Consolas,monospace;padding:28px 30px;position:relative}
+  .wide-dialog{width:min(800px,96vw)}.wf-step{display:grid;grid-template-columns:52px 1fr 92px;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--modal-line)}.wf-step em{font-style:normal;color:var(--modal-accent)}.mini-grid{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:4px;margin:20px 0}.mini-grid span{aspect-ratio:1;background:var(--modal-line);min-width:0}.mini-grid .ok{background:#509e7a}.mini-grid .busy{background:var(--modal-accent)}.mini-grid .bad{background:#ad5050}.mini-grid .idle{background:var(--modal-muted);opacity:.4}.modal-meta{line-height:2.2;white-space:pre-wrap}  .dialog:before{content:'';position:absolute;left:30px;top:0;width:44px;height:4px;background:var(--modal-accent,#f36920)}
+  .dialog h2{font:700 28px/1.1 Inter,Arial,sans-serif;letter-spacing:-.5px;margin:14px 0 8px}
+  .dialog small,.subtle{color:var(--modal-muted,#777)}
+  .dialog .eyebrow{font-size:10px;letter-spacing:2px;color:var(--modal-accent,#f36920);font-weight:700}
+  .dialog .head{display:flex;justify-content:space-between;gap:20px;align-items:start}
+  .dialog button,.dialog select,.dialog input{font:inherit;border:1px solid var(--modal-line,#ccc);background:transparent;color:inherit;border-radius:0;padding:8px 10px}
+  .dialog button{cursor:pointer}.dialog button:hover{border-color:var(--modal-accent)}
+  .dialog button:focus-visible,.dialog input:focus-visible,.dialog select:focus-visible{outline:2px solid var(--modal-accent);outline-offset:2px}
+  .dialog .close{min-width:38px;font-size:16px}.dialog .rule{border:0;border-top:1px solid var(--modal-line);margin:16px 0}
+  .dialog .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.dialog .statgrid small{display:block;font-size:10px}.dialog strong{font-size:15px}
+  .dialog .detail{padding:12px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+  .dialog .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:19px}.dialog .primary{background:var(--modal-accent);border-color:var(--modal-accent);color:#101010}
+  .dialog .formrow{display:flex;gap:12px;margin-top:12px;align-items:center}.dialog .formrow label{min-width:95px;color:var(--modal-muted)}
+  .dialog .formrow input[type=color]{height:35px;width:70px;padding:2px;cursor:pointer}.dialog .formrow input[type=text]{min-width:0;flex:1}
+  .dialog .colors{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+  @media(max-width:560px){.dialog{padding:20px}.dialog .colors{grid-template-columns:1fr}}
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto!important; } }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="artboard"><canvas id="fui" tabindex="0" aria-label="DNA interactive futuristic monitoring dashboard. Click agent circles for details. Toolbar controls play, step, color theme, and reset."></canvas><span id="help">DNA / FUI</span></div></div>
+<div id="agentShade" class="shade" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="agentTitle" tabindex="-1">
+<div class="head"><div><div class="eyebrow">DNA / CELL INSPECTOR</div><h2 id="agentTitle">SUPERVISOR</h2><small id="agentSubtitle">AGENT DIAGNOSTICS</small></div><button type="button" class="close" id="closeAgent" aria-label="Close inspector">✕</button></div>
+<hr class="rule"><div class="statgrid" id="agentStats"></div><hr class="rule"><small>LAST OBSERVED ACTIVITY</small><div class="detail" id="agentDetail"></div><div class="actions"><button type="button" id="followAgent" class="primary">FOLLOW NODE</button><button type="button" id="dismissAgent">CLOSE</button></div>
+</section></div>
+<div id="detailShade" class="shade" hidden><section class="dialog wide-dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitle" tabindex="-1">
+<div class="head"><div><div class="eyebrow">DNA / RUNTIME INSPECTOR</div><h2 id="detailTitle">Workflow sequence</h2><small id="detailCaption">DEPENDENCY-SAFE EXECUTION</small></div><button type="button" class="close" id="closeDetail">✕</button></div>
+<hr class="rule"><div id="detailContent"></div><div class="actions"><button type="button" id="dismissDetail">CLOSE</button></div></section></div>
+<div id="themeShade" class="shade" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="themeTitle" tabindex="-1">
+<div class="head"><div><div class="eyebrow">DNA / SCHEMA LAB</div><h2 id="themeTitle">Theme laboratory</h2><small>LIGHT / DARK / CUSTOM SCHEMAS</small></div><button type="button" class="close" id="closeTheme" aria-label="Close theme editor">✕</button></div>
+<hr class="rule"><div class="formrow"><label for="schemaList">SCHEMA</label><select id="schemaList" style="flex:1"></select></div>
+<div class="colors" id="colorFields"></div><div class="formrow"><label for="schemaName">SAVE AS</label><input type="text" id="schemaName" maxlength="35" placeholder="Custom name"></div>
+<div class="actions"><button type="button" id="saveSchema" class="primary">SAVE SCHEMA</button><button type="button" id="removeSchema">DELETE CUSTOM</button><button type="button" id="dismissTheme">CLOSE</button></div><small id="themeNotice" aria-live="polite"></small>
+</section></div>
+<script>
+(() => {
+'use strict';
+const canvas = document.getElementById('fui');
+const stage = document.getElementById('artboard');
+const ctx = canvas.getContext('2d', { alpha:false, desynchronized:true });
+const BASE_W = 1600, BASE_H = 960;
+const MM = 'ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace';
+const SS = 'Inter, "Arial", sans-serif';
+const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (v,a,b) => Math.max(a,Math.min(b,v));
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const short = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n>=1000 ? (n/1000).toFixed(1)+'K' : String(Math.round(n));
+const money = n => '$'+n.toFixed(3);
+const COL = {
+ light:{bg:'#f2f1ed',text:'#151613',muted:'#73746e',faint:'#a3a49e',hair:'#d6d6d0',grid:'#e3e3dd',paper:'#f2f1ed',accent:'#f36920',accentPale:'#fce4d7',okay:'#4d806b',soft:'#ededE7',inverse:'#faf9f4'},
+ dark:{bg:'#0b1011',text:'#e5e6df',muted:'#8c9996',faint:'#4b5b59',hair:'#2c3737',grid:'#1a2526',paper:'#0b1011',accent:'#ff763f',accentPale:'#3f2720',okay:'#8bbda5',soft:'#111a1b',inverse:'#151e20'}
+};
+const agents = [
+ {id:'supervisor',name:'DNA CORE',tag:'KERNEL',x:765,y:452,r:66,code:'SYS.00',model:'DETERMINISTIC ENGINE',role:'System runtime / event coordination (not an agent)'},
+ {id:'planner',name:'PLANNER',tag:'REASON',x:758,y:275,r:51,code:'A.01',model:'GPT-6',role:'Planning and decomposition'},
+ {id:'research',name:'RESEARCH',tag:'DISCOVER',x:984,y:328,r:49,code:'A.02',model:'GPT-6 MINI',role:'Sources and synthesis'},
+ {id:'browser',name:'WEB TOOL',tag:'RETRIEVE',x:1065,y:483,r:38,code:'T.03',model:'BROWSER',role:'External tool execution'},
+ {id:'coder',name:'CODER',tag:'EXECUTE',x:955,y:591,r:52,code:'A.04',model:'GPT-6',role:'Implementation and repair'},
+ {id:'validator',name:'VALIDATOR',tag:'VERIFY',x:727,y:625,r:43,code:'A.05',model:'CHECKER',role:'Acceptance verification'},
+ {id:'memory',name:'MEMORY',tag:'RECALL',x:537,y:572,r:42,code:'T.06',model:'SQL / VECTOR',role:'Retrieval and state storage'},
+ {id:'scheduler',name:'SCHEDULER',tag:'QUEUE',x:510,y:377,r:45,code:'R.07',model:'RUNTIME',role:'Deterministic task dispatch'}
+];
+const amap = Object.fromEntries(agents.map(a => [a.id,a]));
+const origin=Object.fromEntries(agents.map(a=>[a.id,{x:a.x,y:a.y}]));
+const dynamics=Object.fromEntries(agents.map(a=>[a.id,{vx:0,vy:0,offset:Math.random()*6.283}]));
+let tokenGlowUntil=0,costGlowUntil=0,previousCost=0;
+let dragging=null, draggingMoved=false, modalOpen=false, tickerOffset=0, lastHeartbeat=0, engineLastEvent=0;
+const $id=id=>document.getElementById(id);
+const shadeAgent=$id('agentShade'),shadeTheme=$id('themeShade'),shadeDetail=$id('detailShade');
+const colorKeys=['bg','text','muted','hair','grid','accent','okay','soft'];
+let customSchemas={};try{customSchemas=JSON.parse(localStorage.getItem('dna.fui.schemas')||'{}')||{}}catch(_){}
+let schemaName='DNA Light';
+function storedSchemas(){try{localStorage.setItem('dna.fui.schemas',JSON.stringify(customSchemas));return true}catch(_){return false}}
+function applySchema(name){
+ let palette=name==='DNA Light'?COL.light:name==='DNA Dark'?COL.dark:customSchemas[name];
+ if(!palette)return;
+ schemaName=name;theme=(name==='DNA Dark'||(name!=='DNA Light'&&palette.bg&&isDark(palette.bg)))?'dark':'light';
+ P={...COL[theme],...palette};currentPalette={...P};document.body.style.background=P.bg;
+ document.documentElement.style.setProperty('--modal-bg',P.bg);document.documentElement.style.setProperty('--modal-text',P.text);
+ document.documentElement.style.setProperty('--modal-line',P.hair);document.documentElement.style.setProperty('--modal-accent',P.accent);
+ document.documentElement.style.setProperty('--modal-muted',P.muted);render();
+}
+function isDark(hex){let c=hex.replace('#','');if(c.length!==6)return false;return (parseInt(c.slice(0,2),16)*.299+parseInt(c.slice(2,4),16)*.587+parseInt(c.slice(4,6),16)*.114)<125}
+let currentPalette={...COL.light};
+function themeOptions(){const sel=$id('schemaList');sel.innerHTML='';for(const n of ['DNA Light','DNA Dark',...Object.keys(customSchemas)]){let o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);}sel.value=schemaName;}
+function buildFields(){const el=$id('colorFields');el.innerHTML='';for(const k of colorKeys){const r=document.createElement('div');r.className='formrow';const l=document.createElement('label');l.textContent=k.toUpperCase();const input=document.createElement('input');input.type='color';input.dataset.key=k;input.value=currentPalette[k];input.addEventListener('input',()=>{currentPalette[k]=input.value;P={...P,...currentPalette};theme=isDark(P.bg)?'dark':'light';document.body.style.background=P.bg;setModalColors();render();});r.append(l,input);el.append(r);}}
+function setModalColors(){for(const [key,v] of Object.entries({'--modal-bg':P.bg,'--modal-text':P.text,'--modal-line':P.hair,'--modal-accent':P.accent,'--modal-muted':P.muted}))document.documentElement.style.setProperty(key,v)}
+function openModal(el){el.hidden=false;modalOpen=true;el.querySelector('.dialog').focus();}
+function closeModal(el){el.hidden=true;modalOpen=!(shadeAgent.hidden&&shadeTheme.hidden&&shadeDetail.hidden);canvas.focus({preventScroll:true})}
+function openAgent(id){selected=id;const a=amap[id];if(!a)return;setModalColors();$id('agentTitle').textContent=a.name;$id('agentSubtitle').textContent=a.code+' / '+a.role;
+ const entries=[['CURRENT STATUS',(statuses[id]||'idle').toUpperCase()],['ENGINE',a.model],['TOKENS',fmt(agentTokens[id]||0)],['TOOL CALLS',fmt(agentCalls[id]||0)],['POSITION',`${Math.round(a.x)} / ${Math.round(a.y)}`],['ROLE',a.tag]];
+ $id('agentStats').innerHTML='';for(const [k,v] of entries){const cell=document.createElement('div');const small=document.createElement('small');small.textContent=k;const strong=document.createElement('strong');strong.textContent=v;cell.append(small,strong);$id('agentStats').appendChild(cell);}
+ $id('agentDetail').textContent=lastEvents[id]||'Waiting for event';openModal(shadeAgent)}
+function openDetail(kind){
+ const workflow=kind==='workflow';$id('detailTitle').textContent=workflow?'Execution sequence':'Swarm / batch execution';
+ $id('detailCaption').textContent=workflow?'TASK GRAPH / ORDERED VIEW':'SIMULATED CAPACITY / AGGREGATED ITEMS';
+ const content=$id('detailContent');content.replaceChildren();
+ if(workflow){
+  const chain=['PLAN','RESEARCH','SEARCH','CODE','TEST','REPORT'];
+  chain.forEach((n,i)=>{const row=document.createElement('div');row.className='wf-step';const idx=document.createElement('small');idx.textContent=String(i+1).padStart(2,'0')+' / 06';const name=document.createElement('strong');name.textContent=n;const state=document.createElement('em');state.textContent=(tasks[n]||'queued').toUpperCase();row.append(idx,name,state);content.append(row);});
+  const note=document.createElement('p');note.className='subtle';note.textContent='A sequence is a readable projection of the dependency graph. Parallel branches remain independent; JOIN advances only after all required predecessors are complete.';content.append(note);
+ }else{
+  const description=document.createElement('div');description.className='modal-meta';description.textContent='JOB  #0042  /  12,000 ITEMS  /  24 BATCHES  /  8 WORKERS\nBATCH SIZE  500  /  RUNNING  6  /  QUEUED  12  /  COMPLETED  5  /  FAILED  1';content.append(description);
+  const grid=document.createElement('div');grid.className='mini-grid';grid.setAttribute('aria-label','200 representative sample items, color coded by batch state');for(let i=0;i<200;i++){const e=document.createElement('span');e.className=i<95?'ok':i<148?'busy':i<183?'idle':'bad';grid.append(e)}content.append(grid);
+  const tip=document.createElement('p');tip.className='subtle';tip.textContent='Each square represents a sampled or aggregated group of items, not an individual worker. The production view should receive batch totals from the engine and draw only a bounded set of marks. Select a batch later to inspect its worker assignments and failed items.';content.append(tip);
+ }
+ setModalColors();openModal(shadeDetail);
+}
+function openTheme(){setModalColors();themeOptions();buildFields();$id('schemaName').value='';$id('themeNotice').textContent='Edits preview immediately. Save to keep your schema in this browser.';openModal(shadeTheme)}
+$id('schemaList').addEventListener('change',e=>{applySchema(e.target.value);buildFields()});
+$id('saveSchema').addEventListener('click',()=>{const name=$id('schemaName').value.trim();if(!name||name==='DNA Light'||name==='DNA Dark'){$id('themeNotice').textContent='Enter a unique custom name.';return;}customSchemas[name]={...currentPalette};const persisted=storedSchemas();applySchema(name);themeOptions();$id('themeNotice').textContent=persisted?'Saved locally in this browser.':'Schema applied, but local storage is unavailable.'});
+$id('removeSchema').addEventListener('click',()=>{if(!customSchemas[schemaName]){$id('themeNotice').textContent='Built-in schemas cannot be deleted.';return;}delete customSchemas[schemaName];storedSchemas();applySchema('DNA Light');themeOptions();buildFields();$id('themeNotice').textContent='Custom schema deleted.'});
+for(const id of ['closeAgent','dismissAgent','closeTheme','dismissTheme'])$id(id).addEventListener('click',()=>closeModal(id.includes('Agent')?shadeAgent:shadeTheme));
+for(const id of ['closeDetail','dismissDetail'])$id(id).addEventListener('click',()=>closeModal(shadeDetail));
+$id('followAgent').addEventListener('click',()=>closeModal(shadeAgent));
+for(const el of [shadeAgent,shadeTheme,shadeDetail])el.addEventListener('pointerdown',e=>{if(e.target===el)closeModal(el)});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!shadeAgent.hidden)closeModal(shadeAgent);if(!shadeTheme.hidden)closeModal(shadeTheme);if(!shadeDetail.hidden)closeModal(shadeDetail)}});
+
+const edges = [['scheduler','supervisor'],['supervisor','planner'],['planner','research'],['research','browser'],['research','supervisor'],['supervisor','coder'],['coder','validator'],['validator','supervisor'],['supervisor','memory'],['memory','coder'],['scheduler','memory'],['browser','coder']];
+const sequence = [
+ {type:'agent.started',agent:'planner',detail:'Planning job #0042',task:'PLAN'},
+ {type:'task.delegated',from:'planner',to:'research',agent:'research',detail:'Research task dispatched',task:'RESEARCH'},
+ {type:'tool.called',from:'research',to:'browser',agent:'browser',detail:'web.search [query: architecture]',task:'SEARCH'},
+ {type:'tool.result',from:'browser',to:'research',agent:'research',detail:'6 sources returned / 318 ms',task:'SEARCH'},
+ {type:'llm.completed',agent:'research',detail:'Evidence summarized / 942 tokens',inputTokens:2140,outputTokens:942,task:'RESEARCH'},
+ {type:'message.sent',from:'research',to:'supervisor',agent:'supervisor',detail:'Research bundle received',task:'RESEARCH'},
+ {type:'task.delegated',from:'supervisor',to:'coder',agent:'coder',detail:'Implementation assigned',task:'CODE'},
+ {type:'llm.requested',agent:'coder',detail:'Generating implementation',task:'CODE'},
+ {type:'llm.completed',agent:'coder',detail:'3 files generated',inputTokens:4820,outputTokens:1690,task:'CODE'},
+ {type:'tool.called',from:'coder',to:'memory',agent:'memory',detail:'Persisting code artifacts',task:'CODE'},
+ {type:'tool.result',from:'memory',to:'coder',agent:'coder',detail:'Artifacts saved / 41 ms',task:'CODE'},
+ {type:'task.completed',agent:'coder',detail:'Implementation ready',task:'CODE'},
+ {type:'task.delegated',from:'supervisor',to:'validator',agent:'validator',detail:'Acceptance suite assigned',task:'TEST'},
+ {type:'validation.started',agent:'validator',detail:'Executing acceptance tests',task:'TEST'},
+ {type:'validation.failed',agent:'validator',detail:'7/8 passed · 1 repair needed',task:'TEST'},
+ {type:'message.sent',from:'validator',to:'coder',agent:'coder',detail:'Failure evidence / line 83',task:'CODE'},
+ {type:'llm.completed',agent:'coder',detail:'Patch generated',inputTokens:1160,outputTokens:430,task:'CODE'},
+ {type:'message.sent',from:'coder',to:'validator',agent:'validator',detail:'Patch ready to verify',task:'TEST'},
+ {type:'validation.passed',agent:'validator',detail:'8/8 acceptance tests passed',task:'TEST'},
+ {type:'message.sent',from:'validator',to:'supervisor',agent:'supervisor',detail:'Verified result delivered',task:'REPORT'},
+ {type:'task.completed',agent:'supervisor',detail:'Job #0042 completed',task:'REPORT'}
+];
+let P=COL.light, theme='light', demo=true, paused=false, speed=1, selected='supervisor', cycle=42, evtIndex=0, seqNo=0;
+let simTime=0, lastReal=0, stepClock=0, packets=[], ripples=[], hit=[], hovered='', metricClock=0;
+let inputTokens=128400, outputTokens=36740, toolCalls=74, completed=18, failCount=0, recovered=0;
+let tasks={}, statuses={}, agentTokens={}, agentCalls={}, lastEvents={}, events=[], telemetry=[], costHistory=[];
+const taskNames=['PLAN','RESEARCH','SEARCH','CODE','TEST','REPORT'];
+const initState=()=>{
+ tasks={PLAN:'queued',RESEARCH:'queued',SEARCH:'queued',CODE:'queued',TEST:'queued',REPORT:'queued'};
+ statuses={supervisor:'active',planner:'idle',research:'idle',browser:'idle',coder:'idle',validator:'idle',memory:'idle',scheduler:'idle'};
+ agentTokens={}; agentCalls={}; lastEvents={};
+ agents.forEach(a=>{agentTokens[a.id]=0;agentCalls[a.id]=0;lastEvents[a.id]='Awaiting activity';});
+};
+initState();
+function reset(full=true){
+  if(full){simTime=0; inputTokens=128400;outputTokens=36740;toolCalls=74;completed=18;failCount=0;recovered=0;cycle=42;seqNo=0;events=[];telemetry=[];costHistory=[];}
+  evtIndex=0;stepClock=0;metricClock=0;packets=[];ripples=[];initState();
+  if(full){ addLog({type:'system.ready',agent:'supervisor',detail:'Simulation ready — replaying deterministic events'}); for(let i=0;i<48;i++){const t=i/47; telemetry.push({load:22+7*Math.sin(i*.4)+10*t,throughput:10+8*Math.sin(i*.28)**2,api:18+6*Math.cos(i*.31),queue:11+2*Math.sin(i*.35)});costHistory.push({v:9+Math.abs(Math.sin(i*.21))*(13+i*.2)});}}
+}
+function addLog(e){
+  const minute=Math.floor(simTime/60);const sec=Math.floor(simTime%60);
+  const time=`${String(14+Math.floor(minute/60)).padStart(2,'0')}:${String((27+minute)%60).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  events.unshift({enteredAt:simTime,time,type:e.type||'event',agent:e.agent||'engine',detail:e.detail||'—',severity:(e.type||'').includes('failed')?'error':(e.type||'').includes('passed')?'success':'normal'});
+  if(events.length>70) events.length=70;
+}
+function link(a,b){return amap[a]&&amap[b]? [amap[a],amap[b]]:null}
+function emit(e){
+ seqNo++;addLog(e);
+ const agent=amap[e.agent]; const priorCost=cost();
+ if(e.inputTokens || e.outputTokens){ inputTokens+=e.inputTokens||0;outputTokens+=e.outputTokens||0;agentTokens[e.agent]=(agentTokens[e.agent]||0)+(e.inputTokens||0)+(e.outputTokens||0); }
+ if(e.inputTokens||e.outputTokens){tokenGlowUntil=simTime+2.1;if(cost()>priorCost){costGlowUntil=simTime+2.4;previousCost=priorCost;}}
+ if(e.type==='tool.called'){toolCalls++; agentCalls[e.agent]=(agentCalls[e.agent]||0)+1;}
+ engineLastEvent=simTime;
+ if(e.type==='task.completed') completed++;
+ if(e.type==='validation.failed') failCount++;
+ if(e.type==='validation.passed')recovered++;
+ if(agent){lastEvents[e.agent]=e.detail||e.type; ripples.push({x:agent.x,y:agent.y,t:simTime,color:e.type.includes('failed')?'warn':e.type.includes('passed')?'okay':'accent'});}
+ const pair=link(e.from,e.to);
+ if(pair) packets.push({from:pair[0],to:pair[1],t:simTime,type:e.type});
+ if(e.task){
+  if(e.type==='task.delegated'||e.type==='agent.started'||e.type==='validation.started'||e.type==='llm.requested')tasks[e.task]='active';
+  if(e.type==='task.completed' || e.type==='validation.passed')tasks[e.task]='done';
+  if(e.type==='validation.failed')tasks[e.task]='failed';
+ }
+ if(e.type==='task.delegated'&&e.from==='planner'){tasks.PLAN='done';statuses.planner='done';}
+ if(e.type==='tool.result'&&e.task==='SEARCH')tasks.SEARCH='done';
+ if(e.type==='message.sent'&&e.from==='research'&&e.to==='supervisor'){tasks.RESEARCH='done';statuses.research='done';}
+ if(e.type==='message.sent'&&e.from==='coder'&&e.to==='validator')tasks.TEST='active';
+ if(e.type==='task.delegated'&&e.to)statuses[e.to]='active';
+ if(e.type==='agent.started')statuses[e.agent]='active';
+ if(e.type==='tool.called'&&e.agent)statuses[e.agent]='active';
+ if(e.type==='tool.result'&&e.from)statuses[e.from]='idle';
+ if(e.type==='llm.requested')statuses[e.agent]='active';
+ if(e.type==='llm.completed')statuses[e.agent]='active';
+ if(e.type==='validation.started')statuses.validator='active';
+ if(e.type==='validation.failed')statuses.validator='error';
+ if(e.type==='validation.passed')statuses.validator='done';
+ if(e.type==='task.completed')statuses[e.agent]='done';
+ if(e.type==='message.sent'&&e.to)statuses[e.to]='active';
+}
+function nextEvent(){
+ if(evtIndex>=sequence.length){cycle++;evtIndex=0; initState();addLog({type:'cycle.started',agent:'scheduler',detail:`Run #${String(cycle).padStart(4,'0')} / fresh task graph`});}
+ emit(sequence[evtIndex++]);
+}
+function ingest(raw){
+ if(!raw||typeof raw!=='object')return false;
+ demo=false; paused=false;
+ const e={type:String(raw.type||'event.received').slice(0,80),agent:String(raw.agent||raw.to||'supervisor'),from:raw.from,to:raw.to,task:raw.task,detail:String(raw.detail||raw.message||'Event received').slice(0,130),inputTokens:$(Number(raw.inputTokens)||0,0,1e9),outputTokens:$(Number(raw.outputTokens)||0,0,1e9)};
+ emit(e); return true;
+}
+window.DNA_FUI={ingest,reset:()=>reset(true),setDemo:v=>{demo=!!v;if(demo)reset(true)},setTheme:v=>applySchema(v==='dark'?'DNA Dark':'DNA Light'),getState:()=>({schema:schemaName,demo,paused,selected,events:events.slice(0,20),tasks:{...tasks},inputTokens,outputTokens})};
+const titleHits=[];
+function line(x1,y1,x2,y2,color=P.hair,w=1){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
+function rect(x,y,w,h,fill,stroke,lw=1){if(fill){ctx.fillStyle=fill;ctx.fillRect(x,y,w,h)}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.strokeRect(x+.5,y+.5,w-1,h-1)}}
+function circle(x,y,r,color,fill=false,w=1){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);if(fill){ctx.fillStyle=color;ctx.fill()}else{ctx.strokeStyle=color;ctx.lineWidth=w;ctx.stroke()}}
+function arc(x,y,r,a,b,color,w=1){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.arc(x,y,r,a,b);ctx.stroke()}
+function text(s,x,y,size=11,color=P.text,weight=400,font=MM,align='left'){
+ ctx.font=`${weight} ${size}px ${font}`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(String(s),x,y);
+}
+function spacing(s,x,y,size=11,color=P.text,letter=1.5,weight=600){
+ ctx.font=`${weight} ${size}px ${SS}`;ctx.textBaseline='alphabetic';ctx.fillStyle=color;ctx.textAlign='left';
+ let xx=x;for(const c of String(s)){ctx.fillText(c,xx,y);xx+=ctx.measureText(c).width+letter;}
+}
+function fitText(s,maxW,size=11,weight=400,font=MM){ctx.font=`${weight} ${size}px ${font}`;let t=String(s);while(t.length>2&&ctx.measureText(t).width>maxW)t=t.slice(0,-2)+'…';return t;}
+function plus(x,y,size=4,color=P.muted){line(x-size,y,x+size,y,color,.7);line(x,y-size,x,y+size,color,.7)}
+function point(x,y,r=2,c=P.accent){circle(x,y,r,c,true)}
+function gridBar(x,y,v,max,w=88,h=4,col=P.accent){rect(x,y,w,h,P.hair);rect(x,y,$(v/max,0,1)*w,h,col)}
+function tinyTag(s,x,y,c=P.accent){rect(x,y-10,6,6,c);text(s,x+12,y-4,9,P.muted,600)}
+function panel(x,y,w,title,idx,right){
+ line(x,y,x+w,y,P.text,1.05);rect(x,y,20,3,P.accent);text(`${idx} / ${title}`,x,y-10,11,P.text,700,MM);if(right)text(right,x+w,y-10,9,P.muted,400,MM,'right');
+}
+function sectionMark(x,y,kind='plus'){if(kind==='plus')plus(x,y,4,P.accent);else circle(x,y,2,P.accent,true)}
+function pill(s,x,y,w,h,active,action){
+ rect(x,y,w,h,active?P.text:undefined,active?P.text:P.hair,.8);
+ text(s,x+w/2,y+h/2+4,10,active?P.bg:P.text,600,MM,'center');
+ hit.push({x,y,w,h,action,type:'control'});
+ if(hovered===action)rect(x,y,w,h,null,P.accent,1.4);
+}
+function chart(values,x,y,w,h,color=P.text,fill=false,maxVal){
+ if(!values||!values.length)return;
+ let min=0,max=maxVal||Math.max(...values,1)*1.22;
+ line(x,y+h,x+w,y+h,P.hair,.65);
+ ctx.beginPath();values.forEach((v,i)=>{const xx=x+i/(values.length-1)*w,yy=y+h-$(v/max,0,1)*h;if(i===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy)});
+ ctx.strokeStyle=color;ctx.lineWidth=1.25;ctx.stroke();
+ if(fill){ctx.lineTo(x+w,y+h);ctx.lineTo(x,y+h);ctx.closePath();ctx.fillStyle=theme==='light'?'rgba(243,105,32,.04)':'rgba(255,118,63,.05)';ctx.fill();}
+}
+function barChart(values,x,y,w,h,color=P.accent){const n=values.length,pad=3,bw=w/n;values.forEach((d,i)=>{const dh=$(d.v/48,0,1)*h;ctx.fillStyle=d.col||color;ctx.fillRect(x+i*bw,y+h-dh,Math.max(1,bw-pad),dh)});}
+function back(){
+ rect(0,0,BASE_W,BASE_H,P.bg);
+ const g=ctx.createRadialGradient(BASE_W*.92,BASE_H*.08,20,BASE_W*.92,BASE_H*.08,BASE_W*.96);
+ g.addColorStop(0,theme==='dark'?'rgba(0,0,0,.38)':'rgba(72,66,55,.065)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,BASE_W,BASE_H);
+ ctx.save();ctx.globalAlpha=theme==='light'?.46:.48;
+ for(let x=12;x<BASE_W;x+=38)line(x,0,x,BASE_H,P.grid,.43);
+ for(let y=15;y<BASE_H;y+=38)line(0,y,BASE_W,y,P.grid,.43);
+ ctx.restore();
+ for(let x=24;x<BASE_W;x+=190)for(let y=22;y<BASE_H;y+=190)point(x,y,.75,P.hair);
+ line(27,18,27,BASE_H-23,P.hair);line(BASE_W-27,18,BASE_W-27,BASE_H-23,P.hair);
+ line(27,18,BASE_W-27,18,P.hair);line(27,BASE_H-22,BASE_W-27,BASE_H-22,P.hair);
+ for(const [x,y] of [[27,18],[1573,18],[27,938],[1573,938]]){line(x-7,y,x+7,y,P.text,.6);line(x,y-7,x,y+7,P.text,.6)}
+}
+function header(){
+ text('DNA',52,120,104,P.text,800,SS);
+ rect(52,129,121,6,P.accent);
+ spacing('DETERMINISTIC NEURAL ARCHITECTURE',310,67,10,P.muted,1.0,600);
+ text('EXPERIMENTAL BIO-SYSTEM / CONTROL INTERFACE',310,94,11,P.text,500);
+ text('FUI / 001 — LIVE INSTRUMENT',310,119,10,P.muted,500);
+ drawMicroDNA(710,88);
+ line(54,149,1546,149,P.text,1);
+ text('RESEARCH OPERATIONS    /    TELEMETRY & AGENT ORCHESTRATION',54,175,10,P.muted,500);
+ text('SIMULATION / NOT CONNECTED TO DNA ENGINE',1545,175,10,P.accent,650,MM,'right');
+ const x=750;
+ text(`RUN / ${String(cycle).padStart(4,'0')}`,x,60,11,P.muted,600);
+ text(`#${String(cycle).padStart(4,'0')}`,x,91,29,P.text,800,SS);
+ line(x+150,48,x+150,124,P.hair);
+ text('INPUT + OUTPUT',x+168,60,11,P.muted,500);
+ metricGlow(x+163,63,158,42,tokenGlowUntil);text(short(inputTokens+outputTokens),x+168,91,29,P.text,700,SS);
+ text('TOKENS',x+168,111,9,P.muted);
+ line(x+330,48,x+330,124,P.hair);
+ text('EST. RUN COST',x+352,60,11,P.muted,500);
+ metricGlow(x+347,63,159,42,costGlowUntil);text(money(cost()),x+352,91,29,P.text,700,SS);
+ text('USD / SYNTHETIC',x+352,111,9,P.muted);
+ line(1265,48,1265,124,P.hair);
+ text('ENGINE',1280,61,10,P.muted,500);
+ point(1283,83,4,paused?P.muted:P.okay);
+ text(paused?'PAUSED':demo?'DEMO / RUNNING':'EXTERNAL FEED',1294,86,10,P.text,700);
+ pill(paused?'▶ RUN':'Ⅱ PAUSE',1290,100,75,28,paused,'play');
+ pill('STEP ›',1370,100,62,28,false,'step');
+ pill('SCHEMA',1437,100,63,28,false,'theme');
+ pill('↺',1504,100,42,28,false,'reset');
+ drawHeartbeat(1114,146);
+}
+function metricGlow(x,y,w,h,until){const t=until-simTime;if(t<=0)return;ctx.save();ctx.globalAlpha=Math.min(.20,t*.095);rect(x,y,w,h,P.accent);ctx.restore();line(x,y+h,x+w,y+h,P.accent,Math.min(2.2,t));}
+function metrics(){
+ const x=53,w=270;
+ panel(x,218,w,'SYSTEM STATE','01','HOST / RUNTIME');
+ text(String(Object.values(statuses).filter(s=>s==='active').length).padStart(2,'0'),x,266,39,P.text,700,SS);text('ACTIVE',x+64,247,9,P.muted);text('AGENT PROCESSES',x+64,264,10,P.text,600);
+ text(String(Object.values(tasks).filter(s=>s==='queued').length).padStart(2,'0'),x+190,266,39,P.text,700,SS);text('QUEUED',x+188,282,9,P.muted);
+ line(x,300,x+w,300,P.hair);
+ const m=[['CPU / 32.8%',.328],['RAM / 46.2%',.462],['QUEUE / 08',.38],['MODEL API / 99.2%',.992]];
+ m.forEach((a,i)=>{let yy=322+i*24;text(a[0],x,yy,10,P.muted,500);gridBar(x+158,yy-8,a[1],1,112,4,i===0?P.accent:P.text);});
+ text('MEMORY / API / SCHEDULER NORMAL',x,424,9,P.muted);
+ panel(x,460,w,'TOKEN ACCOUNTING','02','ESTIMATED PRICING');
+ text('TOTAL INPUT',x,489,10,P.muted);text(fmt(inputTokens),x+w,489,14,P.text,700,MM,'right');
+ text('TOTAL OUTPUT',x,513,10,P.muted);text(fmt(outputTokens),x+w,513,14,P.text,700,MM,'right');
+ line(x,526,x+w,526,P.hair);
+ text('COST TO DATE',x,547,10,P.muted);metricGlow(x+152,526,120,28,costGlowUntil);text(money(cost()),x+w,547,17,P.accent,700,MM,'right');
+ text('MODEL MIX / TOKENS',x,572,9,P.muted);
+ const amt=inputTokens+outputTokens;rect(x,584,w,9,P.hair);rect(x,584,w*inputTokens/amt,9,P.text);rect(x+w*inputTokens/amt,584,w*outputTokens/amt,9,P.accent);
+ text('INPUT / '+Math.round(inputTokens/amt*100)+'%',x,608,9,P.muted);text('OUTPUT / '+Math.round(outputTokens/amt*100)+'%',x+w,608,9,P.muted,400,MM,'right');
+ panel(x,650,w,'MODEL ROUTER','03','AUTO / COST FIRST');
+ const rows=[['REASONER / GPT-6','02','ACTIVE'],['WORKER / MINI','04','ACTIVE'],['VALIDATOR / RULES','01','IDLE']];
+ rows.forEach((r,i)=>{let yy=675+i*25;text(r[0],x,yy,9,P.text,500);text(r[1],x+203,yy,10,P.accent,650);point(x+w-4,yy-4,2.5,i===2?P.faint:P.okay);});
+ text('MODEL ACTIVITY DRIVEN BY TASK RATINGS',x,758,9,P.muted);
+}
+function topology(){
+ const cx=775,cy=455;
+ panel(366,218,760,'CELLULAR TOPOLOGY','04','8 NODES  /  EVENT DRIVEN');
+ text('THE ORGANISM',366,258,24,P.text,800,SS);
+ text('AGENTS AS CELLS / SIGNALS AS MESSAGES',366,278,9,P.muted);
+ text('0042.7B / MAP COORDINATES',1121,282,9,P.faint,500,MM,'right');
+ ctx.save();
+ [132,201,268].forEach((r,i)=>{
+  circle(cx,cy,r,theme==='light'?'#dcdcd6':'#253131',false,.85);
+  if(i!==0)arc(cx,cy,r,Math.PI*1.08,Math.PI*1.25,P.accent,i===2?1.7:1);
+ });
+ for(let i=0;i<24;i++){
+  const a=i*Math.PI/12,x1=cx+276*Math.cos(a),y1=cy+276*Math.sin(a),x2=cx+(i%3===0?286:280)*Math.cos(a),y2=cy+(i%3===0?286:280)*Math.sin(a);
+  line(x1,y1,x2,y2,P.hair,i%3===0?1:.6);
+ }
+ line(cx-303,cy,cx+303,cy,P.hair,.7);line(cx,cy-293,cx,cy+293,P.hair,.7);
+ circle(cx,cy,4,P.hair);plus(cx,cy,11,P.hair);
+ text('N',cx-4,cy-296,9,P.faint);
+ text('S',cx-3,cy+308,9,P.faint);
+ edges.forEach(([aa,bb],idx)=>{
+  const a=amap[aa],b=amap[bb];const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);const x1=a.x+dx/dist*(a.r+7),y1=a.y+dy/dist*(a.r+7),x2=b.x-dx/dist*(b.r+7),y2=b.y-dy/dist*(b.r+7);
+  line(x1,y1,x2,y2,P.hair,idx%3===0?1.2:.85);
+  if(idx%3===0){point(x1+(x2-x1)*.54,y1+(y2-y1)*.54,2.3,P.faint)}
+ });
+ ctx.restore();
+ agents.forEach(a=>drawCell(a));
+ packets=packets.filter(p=>simTime-p.t<1.4);
+ packets.forEach(p=>drawPacket(p));
+ ripples=ripples.filter(p=>simTime-p.t<1.4);
+ ripples.forEach(p=>{let dt=simTime-p.t;if(dt<0)return;let alpha=$(1-dt/1.35,0,1);if(reducedMotion)alpha=.5;ctx.save();ctx.globalAlpha=alpha*.65;circle(p.x,p.y,40+dt*37,p.color==='warn'?P.accent:p.color==='okay'?P.okay:P.accent,false,1.5);ctx.restore();});
+ text('NODE / SELECT AGENT FOR DIAGNOSTICS',369,686,10,P.muted);
+ text('SIGNAL PACKETS ARE EMITTED ONLY ON RECORDED EVENTS',1120,686,9,P.muted,500,MM,'right');
+}
+function drawCell(a){
+ const status=statuses[a.id]||'idle',active=status==='active',done=status==='done',err=status==='error',isSelected=selected===a.id;
+ const r=a.r,accent=err?P.accent:done?P.okay:(active?P.accent:P.text);
+ const stateColor=err?P.accent:active?P.accent:done?P.okay:P.faint;
+ const idleShade=!active&&!done&&!err&&!reducedMotion?(.76+.18*Math.sin(simTime*.52+dynamics[a.id].offset)):1;ctx.save();ctx.globalAlpha=idleShade;
+ circle(a.x,a.y,r,P.text,false,active||isSelected?1.6:.85);
+ circle(a.x,a.y,r+6,theme==='light'?'#d3d3cc':'#33403e',false,.7);
+ arc(a.x,a.y,r+6,-Math.PI*.47,-Math.PI*.25,accent,active?2:1);
+ arc(a.x,a.y,r+6,Math.PI*.52,Math.PI*.77,P.hair,.8);
+ if(active&&!paused&&!reducedMotion){const f=.5+.5*Math.sin(simTime*3.2+a.x*.01);ctx.save();ctx.globalAlpha=.35*f;circle(a.x,a.y,r+10+f*4,P.accent,false,1.2);ctx.restore();}
+ rect(a.x-4,a.y-r-12,8,3,isSelected?P.accent:P.text);
+ circle(a.x,a.y-10,a.id==='supervisor'?13:8,isSelected?P.accent:P.hair,false,1);
+ const glyph= a.id==='supervisor'?'⟡':a.id==='planner'?'∴':a.id==='research'?'⌕':a.id==='coder'?'<>':a.id==='browser'?'↗':a.id==='validator'?'✓':a.id==='memory'?'≡':'↔';
+ text(glyph,a.x,a.y-5,a.id==='supervisor'?20:16,P.text,650,MM,'center');
+ text(a.name,a.x,a.y+13,a.id==='supervisor'?13:10,P.text,700,SS,'center');
+ text(active?'PROCESSING':err?'FAILED':done?'COMPLETE':'STANDBY',a.x,a.y+26,8,stateColor,650,MM,'center');
+ point(a.x+r*.72,a.y-r*.72,2.4,stateColor);
+ hit.push({type:'cell',x:a.x-r-6,y:a.y-r-6,w:2*r+12,h:2*r+12,action:a.id,circle:{x:a.x,y:a.y,r:r+8}});
+ ctx.restore();
+ if(isSelected){
+   arc(a.x,a.y,r+12,Math.PI*.94,Math.PI*1.36,P.accent,2.4);
+   text(`+ ${a.code}`,a.x+r+17,a.y-r+7,9,P.accent,600);
+ }
+}
+function drawPacket(packet){
+ const dur=1.15,t=$( (simTime-packet.t)/dur,0,1); if(reducedMotion && t<.65)return;
+ const a=packet.from,b=packet.to;let dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1;
+ const x1=a.x+dx/L*(a.r+8),y1=a.y+dy/L*(a.r+8),x2=b.x-dx/L*(b.r+8),y2=b.y-dy/L*(b.r+8);
+ const x=x1+(x2-x1)*t,y=y1+(y2-y1)*t;
+ ctx.save();ctx.globalAlpha=1-t*.30;
+ line(x1,y1,x2,y2,P.accent,1.3);
+ ctx.translate(x,y);ctx.rotate(Math.atan2(dy,dx));rect(-4,-4,8,8,P.accent);line(-23,0,-7,0,P.accent,1.7);ctx.restore();
+}
+function rightCol(){
+ const x=1175,w=367;
+ panel(x,218,w,'CURRENT EXECUTION','05',`RUN #${String(cycle).padStart(4,'0')}`);
+ text('TASK / NODE',x,241,9,P.muted);text('STATE',x+218,241,9,P.muted);text('PROGRESS',x+w,241,9,P.muted,400,MM,'right');
+ taskNames.forEach((k,i)=>{
+  const yy=265+i*28;const s=tasks[k],v=s==='done'?1:s==='active'?.30+.12*((simTime%5)/5):s==='failed'?.82:0;
+  if(s==='active')rect(x-8,yy-17,3,19,P.accent);
+  text(`${String(i+1).padStart(2,'0')}  ${k}`,x,yy,11,P.text,s==='active'?700:500);
+  text(s.toUpperCase(),x+213,yy,9,s==='failed'?P.accent:s==='done'?P.okay:P.muted,600);
+  gridBar(x+284,yy-8,v,1,83,5,s==='failed'?P.accent:s==='done'?P.okay:P.text);
+ });
+ line(x,446,x+w,446,P.hair);
+ text('RUN PROGRESS',x,467,10,P.muted);
+ text(`${taskNames.filter(k=>tasks[k]==='done').length} / 6`,x+w,470,21,P.text,700,SS,'right');
+ panel(x,514,w,'SEQUENCED WORKFLOW','06','DEPENDENCY MODEL');
+ const wf=['PLAN','RESEARCH','CODE','TEST','REPORT'];
+ const nodeWidth=58,startX=x+27,gap=71,wy=600;
+ ctx.save();ctx.beginPath();ctx.rect(x-10,545,w+13,96);ctx.clip();
+ wf.forEach((n,i)=>{const xx=startX+i*gap;const state=tasks[n]||'queued';
+  if(i){const px=startX+(i-1)*gap;line(px+nodeWidth/2+2,wy+2,xx-nodeWidth/2-3,wy+2,P.muted,1);point(xx-nodeWidth/2-5,wy+2,1.8,P.accent);}
+  rect(xx-nodeWidth/2,wy-13,nodeWidth,30,state==='active'?P.accentPale:P.bg,state==='done'?P.okay:state==='active'?P.accent:P.hair,1);
+  text(n,xx,wy+5,n==='RESEARCH'?7:8,state==='active'?P.accent:P.text,700,MM,'center');
+  text(String(i+1).padStart(2,'0'),xx,wy-21,8,P.muted,400,MM,'center');
+ });
+ ctx.restore();
+ text('VIEW SEQUENCE  ↗',x,675,10,P.accent,650);text('BATCH / SWARM  ↗',x+w,675,10,P.accent,650,MM,'right');
+ hit.push({type:'control',x:x-5,y:642,w:165,h:43,action:'workflow'});
+ hit.push({type:'control',x:x+w-155,y:642,w:162,h:43,action:'swarm'});
+ panel(x,704,w,'CELL DIAGNOSTICS','07','SELECT ANY CELL');
+ const a=amap[selected]||agents[0],s=statuses[a.id]||'idle';
+ text(a.name,x,747,24,P.text,750,SS);
+ text(a.code,x+w,747,12,P.accent,650,MM,'right');
+ line(x,759,x+w,759,P.hair);
+ text('STATUS',x,778,9,P.muted);text(s.toUpperCase(),x+90,778,10,s==='error'?P.accent:P.text,650);
+ text('ENGINE',x,800,9,P.muted);text(a.model,x+90,800,10,P.text,600);
+ text('TOKENS',x+225,778,9,P.muted);text(fmt(agentTokens[a.id]||0),x+w,778,10,P.text,650,MM,'right');
+ text('CALLS',x+225,800,9,P.muted);text(String(agentCalls[a.id]||0).padStart(2,'0'),x+w,800,10,P.text,650,MM,'right');
+ text('LAST SIGNAL',x,826,9,P.muted);
+ text(fitText(lastEvents[a.id]||'Awaiting activity',350,10),x,846,10,P.text,500);
+}
+function lowerLeft(){
+ const x=53,w=270;
+ panel(x,805,w,'INSTRUMENT TRACE','08','120 SEC / LIVE');
+ text('WORKLOAD / MODEL REQUESTS',x,829,9,P.muted);
+ const load=telemetry.map(t=>t.load),ap=telemetry.map(t=>t.api);
+ chart(load,x,842,w,67,P.text);chart(ap,x,842,w,67,P.accent);
+ text('0 SEC',x,926,9,P.muted);text('120 SEC',x+w,926,9,P.muted,400,MM,'right');
+}
+function lowerMiddle(){
+ const x=365,w=758;
+ panel(x,730,w,'EVENT TRANSMISSION / SYSTEM LOG','09',`SEQ / ${String(seqNo).padStart(5,'0')}  •  ${demo?'DEMO':'EXTERNAL'}`);
+ text('T-ENGINE',x,753,9,P.muted);text('EVENT',x+109,753,9,P.muted);text('SOURCE',x+288,753,9,P.muted);text('PAYLOAD / RESULT',x+443,753,9,P.muted);
+ const shown=events.slice(0,7);
+ shown.forEach((e,i)=>{
+  const y=779+i*24;
+  if(i===0){const freshness=Math.max(0,1-(simTime-e.enteredAt)/1.5);ctx.save();ctx.globalAlpha=freshness*.12;rect(x-7,y-17,w+10,23,P.accent);ctx.restore();rect(x-5,y-14,3,16,P.accent);}
+  if(i<shown.length-1)line(x,y+7,x+w,y+7,P.hair,.65);
+  text(e.time,x,y,10,P.muted,500);
+  const eventColor=e.severity==='error'?P.accent:e.severity==='success'?P.okay:P.text;
+  text(fitText(e.type,164,10,600),x+109,y,10,eventColor,600);
+  text(fitText(e.agent,130,10),x+288,y,10,P.muted,400);
+  text(fitText(e.detail,302,10),x+443,y,10,P.text,400);
+ });
+}
+function lowerRight(){
+ const x=1175,w=367;
+ panel(x,878,w,'HEALTH / ACCEPTANCE','10',failCount>recovered?'REPAIR OPEN':'CONTRACT VERIFIED');
+ const pass=Math.max(0,8-(failCount>recovered?1:0));
+ text(`${pass}/8`,x,925,32,P.text,700,SS);
+ text('CHECKS PASSING',x+87,900,9,P.muted);
+ gridBar(x+87,910,pass,8,175,8,pass===8?P.okay:P.accent);
+ text(pass===8?'VALIDATED':'REPAIR NEEDED',x+w,924,9,pass===8?P.okay:P.accent,650,MM,'right');
+}
+function bottom(){
+ line(53,943,1542,943,P.text,.9);
+ text('DNA / OPERATIONS / DESIGN SPECIMEN',53,956,8,P.muted);
+ text('01  —  CELLULAR RUNTIME  /  REAL VALUES ONLY WHEN CONNECTED',780,956,8,P.muted,400,MM,'center');
+ text(`FRAME ${String(Math.floor(simTime*30)).padStart(6,'0')}  /  DEV SYSTEM`,1542,956,8,P.muted,400,MM,'right');
+}
+function drawMicroDNA(cx,cy){
+ const height=66,half=22;ctx.save();line(cx,cy-height/2-4,cx,cy+height/2+4,P.hair,.6);
+ for(let i=0;i<=16;i++){const yy=cy-height/2+i*height/16,phase=i*.36+(reducedMotion?0:simTime*.6);const x1=cx+Math.sin(phase)*half,x2=cx-Math.sin(phase)*half;line(x1,yy,x2,yy,P.hair,.7);point(x1,yy,1.6,i%3===0?P.accent:P.text);point(x2,yy,1.4,P.muted);}
+ text('HELIX',cx+29,cy-19,8,P.muted);text('DNA/01',cx+29,cy+24,8,P.accent);ctx.restore();
+}
+function drawHeartbeat(x,y){
+ const stale=!demo&&(simTime-engineLastEvent>8);const alive=paused?'PAUSED':demo?'PULSE / DEMO':(stale?'AWAITING EVENTS':'LIVE / EVENTS');
+ text(alive,x,y-21,9,paused?P.muted:P.okay,650);
+ const points=[0,0,0,0,-1,0,0,-6,12,-19,29,-8,0,0,0,0];const start=x+5,width=118;
+ ctx.save();ctx.beginPath();for(let i=0;i<68;i++){const phase=(i/68*3.1-(paused?0:simTime*1.8))%1;const j=((phase%1+1)%1)*points.length;const k=Math.floor(j),f=j-k;const amp=(paused||stale)?0:points[k]*(1-f)+points[(k+1)%points.length]*f;const px=start+i/67*width,py=y+amp*.45;if(!i)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.strokeStyle=paused?P.faint:P.okay;ctx.lineWidth=1.3;ctx.stroke();ctx.restore();
+ point(x+133,y-5,3.2,(paused||stale)?P.faint:P.okay);
+}
+function drawTicker(){
+ rect(54,183,120,19,P.text);text('DNA / TRACE',61,196,10,P.bg,700);
+ ctx.save();ctx.beginPath();ctx.rect(185,183,1357,19);ctx.clip();
+ const messages=['TASKS  //  '+Object.values(tasks).filter(v=>v==='active').length+' ACTIVE','TOKENS  //  '+fmt(inputTokens+outputTokens),'API CALLS  //  '+toolCalls,'COST  //  '+money(cost()),'WORKFLOW  //  RUN '+String(cycle).padStart(4,'0'),'SIGNAL  //  '+(events[0]?.type||'SYSTEM READY'),'EVENT STREAM  //  '+(demo?'SIMULATED':'ENGINE FEED')];
+ const lineText=messages.join('     +     ')+'     +     ';
+ ctx.font=`10px ${MM}`;const total=ctx.measureText(lineText).width;
+ tickerOffset=reducedMotion?0:(simTime*37)%total;
+ for(let i=-1;i<3;i++)text(lineText,190+i*total-tickerOffset,196,10,P.muted,500);
+ ctx.restore();line(54,205,1542,205,P.hair,.6);
+}
+function updateCells(dt){
+ if(reducedMotion||paused)return;
+ const t=Math.min(.05,dt),dragA=dragging?amap[dragging.id]:null;
+ for(const a of agents){if(dragging?.id===a.id)continue;const orig=origin[a.id],d=dynamics[a.id];
+  const core=a.id==='supervisor';let tx=orig.x+Math.sin(simTime*(core?.085:.18)+d.offset)*(core?1.4:5),ty=orig.y+Math.cos(simTime*(core?.075:.14)+d.offset)*(core?1.4:5);
+  if(dragA){let depth=edges.some(([p,q])=>(p===a.id&&q===dragA.id)||(q===a.id&&p===dragA.id))?0.38:0.15;if(core)depth*=.08;tx+=(dragA.x-origin[dragA.id].x)*depth;ty+=(dragA.y-origin[dragA.id].y)*depth;}
+  d.vx+=(tx-a.x)*(core?6:14)*t;d.vy+=(ty-a.y)*(core?6:14)*t;d.vx*=Math.exp(-(core?10:6)*t);d.vy*=Math.exp(-(core?10:6)*t);a.x+=d.vx*t*6;a.y+=d.vy*t*6;
+ }
+}
+function render(){
+ hit=[];
+ back();header();drawTicker();metrics();topology();rightCol();lowerLeft();lowerMiddle();lowerRight();bottom();
+ if(hovered)canvas.style.cursor='pointer';else canvas.style.cursor='default';
+}
+function cost(){return inputTokens*.0025/1000+outputTokens*.010/1000}
+function onFrame(real){
+ if(!lastReal)lastReal=real;const dt=$( (real-lastReal)/1000,0,.10);lastReal=real;
+ if(!paused){
+  simTime+=dt*speed;
+  if(demo){stepClock+=dt*speed;while(stepClock>=2.3){stepClock-=2.3;nextEvent();}}
+  metricClock+=dt*speed;
+  if(metricClock>=2){metricClock=0;const n=telemetry.length;
+   const inWork=Object.values(statuses).filter(s=>s==='active').length;
+   telemetry.push({load:24+inWork*5+Math.sin(n*.38)*6,throughput:inWork*6+4,api:18+Math.cos(n*.23)*7,queue:7+(n%5)});
+   if(telemetry.length>90)telemetry.shift();costHistory.push({v:Math.min(48,8+(cost()*12)%35)});if(costHistory.length>75)costHistory.shift();}
+ }
+ updateCells(dt);render();requestAnimationFrame(onFrame);
+}
+function toLogical(clientX,clientY){
+ const r=canvas.getBoundingClientRect();const X=(clientX-r.left),Y=(clientY-r.top);
+ return {x:(X-offsetX)/scale,y:(Y-offsetY)/scale};
+}
+let scale=1,offsetX=0,offsetY=0;
+function resize(){
+ const cssW=stage.clientWidth,cssH=stage.clientHeight,dpr=$(window.devicePixelRatio||1,1,2);
+ canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
+ canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
+ scale=Math.min(cssW/BASE_W,cssH/BASE_H);offsetX=(cssW-BASE_W*scale)/2;offsetY=(cssH-BASE_H*scale)/2;
+ ctx.setTransform(dpr*scale,0,0,dpr*scale,dpr*offsetX,dpr*offsetY);
+}
+function paintFrame(real){
+ const cssW=stage.clientWidth,cssH=stage.clientHeight,dpr=$(window.devicePixelRatio||1,1,2);
+ ctx.setTransform(dpr*scale,0,0,dpr*scale,dpr*offsetX,dpr*offsetY);
+ onFrame(real);
+}
+function dispatch(action){
+ if(action==='play'){paused=!paused;}
+ else if(action==='step'){if(demo){nextEvent();}else {demo=true;reset(true);nextEvent();}paused=true;}
+ else if(action==='theme'){openTheme();}
+ else if(action==='workflow'||action==='swarm'){openDetail(action);}
+ else if(action==='reset'){demo=true;paused=false;reset(true);}
+ else if(amap[action])openAgent(action);
+ render();
+}
+function picked(x,y){for(let i=hit.length-1;i>=0;i--){const h=hit[i],inside=h.circle?Math.hypot(x-h.circle.x,y-h.circle.y)<=h.circle.r:x>=h.x&&y>=h.y&&x<=h.x+h.w&&y<=h.y+h.h;if(inside)return h;}return null}
+canvas.addEventListener('pointerdown',e=>{
+ if(modalOpen)return;
+ const {x,y}=toLogical(e.clientX,e.clientY),h=picked(x,y);
+ if(h?.type==='cell'){dragging={id:h.action,initialX:x,initialY:y,dx:x-amap[h.action].x,dy:y-amap[h.action].y};draggingMoved=false;canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';}
+});
+canvas.addEventListener('pointermove',e=>{
+ if(modalOpen)return;
+ const {x,y}=toLogical(e.clientX,e.clientY);
+ if(dragging){if(Math.hypot(x-dragging.initialX,y-dragging.initialY)>5)draggingMoved=true;const a=amap[dragging.id];a.x=$(x-dragging.dx,409,1102);a.y=$(y-dragging.dy,295,659);const d=dynamics[a.id];d.vx=0;d.vy=0;return;}
+ const h=picked(x,y);hovered=h?.action||'';
+});
+canvas.addEventListener('pointerup',e=>{
+ if(dragging){const d=dragging;dragging=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(!draggingMoved)openAgent(d.id);else selected=d.id;draggingMoved=false;return;}
+ const {x,y}=toLogical(e.clientX,e.clientY),h=picked(x,y);if(h)dispatch(h.action);
+});
+canvas.addEventListener('pointercancel',()=>{dragging=null;draggingMoved=false});
+canvas.addEventListener('pointerleave',()=>{if(!dragging)hovered=''});
+canvas.addEventListener('keydown',e=>{
+ const key=e.key.toLowerCase();
+ if(key===' '){dispatch('play');e.preventDefault()}
+ else if(key==='arrowright'){dispatch('step');e.preventDefault()}
+ else if(key==='t'){dispatch('theme');e.preventDefault()}
+ else if(key==='r'){dispatch('reset');e.preventDefault()}
+});
+window.addEventListener('resize',resize);
+if(window.ResizeObserver)new ResizeObserver(resize).observe(stage);
+if(reducedMotion)paused=true;
+resize();reset(true);applySchema('DNA Light');requestAnimationFrame(paintFrame);
+})();
+</script>
+</body>
+</html>
