@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dna.local/contracts/dna.fui.event.v1.schema.json",
+  "title": "DNA FUI event v1",
+  "description": "Append-only committed execution event, unique ID and increasing sequence per stream. payload deltas are optional and should only be emitted once.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "seq",
+    "at",
+    "type",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "dna.fui.event/v1"
+    },
+    "id": {
+      "type": "string"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "type": {
+      "type": "string"
+    },
+    "jobId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "processInstanceId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nodeInstanceId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "attemptId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agentId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "fromAgentId": {
+          "type": "string"
+        },
+        "toAgentId": {
+          "type": "string"
+        },
+        "inputTokensDelta": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokensDelta": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "costUsdDelta": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
