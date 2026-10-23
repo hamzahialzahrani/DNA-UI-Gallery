@@ -1,3 +1,13 @@
 # DNA UI Gallery
 
 Public archive of experimental DNA interface designs. No DNA runtime source code.
+
+## Editorial Canvas FUI — selected
+
+- [Latest DNA Editorial Canvas FUI v1.1](dna-fui/dna-editorial-fui-api-v1.1.html) — includes the modal shade gradient and embedded mock data.
+- [Earlier Canvas FUI v3](dna-fui/dna-editorial-fui-v3.html) — preserved for comparison.
+- [Mock API snapshot JSON](dna-fui/dna.fui.mock.snapshot.json) and [integration guide](dna-fui/DNA_FUI_Integration_Guide.md).
+
+The FUI uses simulated example measurements. To connect real DNA data later, use JSON snapshots and SSE events described in the guide.
+
+Interactive preview entry point: [index.html](index.html). If GitHub Pages is not enabled, use repository **Settings → Pages → Deploy from a branch → main / (root)**.
