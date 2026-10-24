@@ -16,4 +16,4 @@ Interactive preview entry point: [index.html](index.html). If GitHub Pages is no
 
 Five additional distinct Claude-generated interactive Canvas concepts (six source uploads, including one duplicate) are available in the [Claude collection](claude/README.md) and featured in the gallery index. The original source HTML files were preserved unchanged.
 
-Latest Claude update: [Brutal Index / Dark + Modals](claude/dna-brutal-index-dark.html) (six detailed inspectors). The [original Dark version](claude/archive/dna-brutal-index-dark-original.html) remains available.
+Latest Claude update: [Brutal Index / Control Room](claude/dna-brutal-index-dark.html) (12 inspector tabs, theme editor). Earlier [Dark + Modals](claude/archive/dna-brutal-index-dark-modals.html) and [original Dark](claude/archive/dna-brutal-index-dark-original.html) are preserved.
