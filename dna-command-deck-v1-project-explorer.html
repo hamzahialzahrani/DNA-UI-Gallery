@@ -248,6 +248,7 @@ function vDnaRuns(x,y,w,h){
  });
  by+=15+nh*rh+17;
  if(sqlRun()){
+  chip(x+w-135,by-4,130,22,'VIEW EVIDENCE >',0,()=>{mo.tab=21;mo.sy=0});
   lab('LAST PERSISTED EXECUTION EVENTS',x,by);
   liveDoc.recentEvents.slice(0,5).forEach((e,i)=>tx('#'+e.eventID+'  '+e.eventType+'  /  '+(e.occurredAtUTC||'-'),x,by+20+i*17,9,'left',i===0,i===0?OR:fg));
   by+=110;
@@ -269,12 +270,68 @@ function vDnaControl(x,y,w,h){
  states.forEach(([l,d,s],i)=>{const yy=by+i*54;box(x,yy,w,49,fg,1);tx(l,x+10,yy+18,11,'left',1,OR);tx(d.slice(0,Math.floor(w/6.2)),x+10,yy+35,9,'left',0,fg,.8);tx(s,x+w-10,yy+17,9,'right',1,fg,.5)});
  return by+states.length*54+12;
 }
+let evidenceFilter=0;
+function vDnaEvidence(x,y,w,h){
+ lab('ACTUAL SQL EVIDENCE / NOT GENERATED SIMULATION',x,y+10);
+ const live=sqlRun(),d=live?liveDoc:null;let by=y+20;
+ if(!live){
+  box(x,by,w,103,fg,1);
+  tx('NO VERIFIED SQL RUN CONNECTED',x+12,by+24,12,'left',1,OR);
+  tx('SOURCE: '+liveState+' / '+dataTag(),x+12,by+45,10,'left',1);
+  tx('Other animated panels stay DEMO; CI success does not mean live VPS data.',x+12,by+68,9);
+  tx('Connect an approved localhost inspector to see authenticated SQL facts.',x+12,by+87,9);
+  return by+126;
+ }
+ const rows=[
+  ['RUN',String(d.runID)],['PROCESS',String(d.processID)],
+  ['NODES',d.completedNodes+'/'+d.totalNodes],['WAIT HUMAN',String(d.awaitingHuman)],
+  ['UNCERTAIN',String(d.uncertainActions+d.uncertainModels)],
+  ['CONFIRMED USD',money(d.confirmedModelCostUSD)],
+  ['HELD USD',money(d.reservedOrUncertainUSD)],
+  ['CAPTURE',String(d.capturedAt).slice(11,19)+' UTC']];
+ const n=w<660?2:4,cw=(w-(n-1)*7)/n;
+ rows.forEach(([label,value],i)=>{
+  const xx=x+(i%n)*(cw+7),yy=by+Math.floor(i/n)*59;
+  box(xx,yy,cw,54,fg,1);tx(label,xx+8,yy+15,8,'left',1,fg,.55);
+  tx(String(value).slice(0,Math.floor((cw-14)/7)),xx+8,yy+39,12,'left',1,i===0?OR:fg);
+ });
+ by+=Math.ceil(rows.length/n)*59+18;
+ lab('RECENT PERSISTED SQL EVENTS / LAST 30 AT MOST',x,by);by+=16;
+ const tabs=['ALL','ACTION','MODEL','HUMAN','OTHER'],tw=(w-28)/5;
+ tabs.forEach((v,i)=>{
+  const xx=x+i*(tw+7),on=evidenceFilter===i;
+  g.fillStyle=on?OR:bg;g.fillRect(xx,by,tw,24);box(xx,by,tw,24,fg,1);
+  tx(v,xx+tw/2,by+16,9,'center',1,on?AT:fg);
+  hit(xx,by,tw,24,()=>{evidenceFilter=i;mo.sy=0});
+ });
+ by+=36;
+ const category=ev=>{
+  const v=String(ev.eventType||'');
+  return v.includes('ACTION')||v.includes('TOOL')?1:
+   v.includes('MODEL')||v.includes('BUDGET')?2:v.includes('HUMAN')?3:4;
+ };
+ const events=d.recentEvents.filter(ev=>!evidenceFilter||category(ev)===evidenceFilter);
+ if(!events.length)tx('NO MATCHING EVENTS IN THE CURRENT BOUNDED WINDOW',x,by+19,10,'left',1,OR);
+ events.forEach((ev,i)=>{
+  const yy=by+i*27;box(x,yy,w,24,fg,1);
+  tx('#'+ev.eventID,x+7,yy+16,9,'left',1,OR);
+  tx(String(ev.eventType||'-').slice(0,Math.max(12,Math.floor(w*.49/6))),x+Math.max(54,w*.12),yy+16,9,'left',1);
+  if(w>=700)tx('NODE '+String(ev.nodeInstanceID??'-'),x+w*.7,yy+16,8,'left',0,fg,.65);
+  tx(String(ev.occurredAtUTC||'').slice(11,19),x+w-7,yy+16,9,'right',0,fg,.7);
+ });
+ by+=Math.max(30,events.length*27)+16;
+ lab('PROVENANCE & SCOPE',x,by);
+ tx('READ-ONLY SQL; no prompts, SQL credentials or raw tool/model responses.',x,by+20,10);
+ tx('Events are a recent window, NOT lifetime action counts. One run only.',x,by+40,10);
+ return by+64;
+}
 function vDnaOptimizer(x,y,w,h){
  lab('DNA PRINCIPLE / OPTIMISE WORK, NOT AGENT COUNT',x,y+10);
  const lines=[
   ['01','DETERMINISTIC','SQL RULES / ROUTING / JOINS / DEADLINES','CORE LAB VERIFIED'],
   ['02','TOOL / ACTION','READ / MOCK WRITE WITH RECEIPTS','CORE LAB VERIFIED'],
   ['03','MODEL GATEWAY','CAP, COST LEDGER, ACCEPTANCE, UNKNOWN HOLD','MOCK PROVIDER TESTED'],
+  ['03B','SQL ACTION / SP','APPROVED LEASED READ-ONLY PROCEDURE','DISPOSABLE SQL CI VERIFIED'],
   ['04','PARALLEL WORK','FOREACH 1–16, JOIN, CHILD WORKFLOWS','CORE LAB VERIFIED'],
   ['05','EVENT-DRIVEN WAKE','SQL NEXT-DUE SCAN, NO LLM STATUS POLLING','CORE LAB VERIFIED'],
   ['06','TASK FUSION','MERGE ADJACENT WORK WHEN IT SAVES COST','NEXT VERSION'],
@@ -371,7 +428,7 @@ ag.forEach((a,i)=>{a.cfg=AC[i];a.tin=2e4+rnd()*6e4;a.tout=8e3+rnd()*2e4;a.calls=
 const TS=[['T-101','SHIP FEATURE: OAUTH LOGIN','HIERARCHICAL',[1,0,2,3,4,6],.62],['T-102','TRIAGE INCIDENT #4471','PEER MESH',[0,5,6],.35],['T-103','REFACTOR PAYMENTS MODULE','PIPELINE',[1,2,4,3],.8],['T-104','DRAFT RELEASE NOTES','PIPELINE',[5,0],.95],['T-105','SECURITY SCAN: REPO','HIERARCHICAL',[6,0,3],.12]];
 const WF=[{n:'FEATURE.SHIP',nd:[{l:'INTAKE',ty:'LLM',a:0,c:0,r:1,d:'Parse request, extract acceptance criteria',tk:1400},{l:'PLAN',ty:'LLM',a:1,c:1,r:1,d:'Build task graph, assign swarm',tk:2600},{l:'FETCH.REPO',ty:'API',a:6,c:2,r:0,d:'GET /repos/{id}/tree',tk:0},{l:'RECALL',ty:'API',a:5,c:2,r:2,d:'POST /vector/query',tk:0},{l:'CODE',ty:'SUB',a:2,c:3,r:1,d:'Implement change in an isolated sub-workflow',tk:9800,sub:[['SPEC','LLM'],['IMPLEMENT','LLM'],['LINT','API'],['FIX','LLM']]},{l:'TEST',ty:'SUB',a:3,c:4,r:1,d:'Generate and run the test suite',tk:4200,sub:[['GEN.TESTS','LLM'],['RUN.CI','API'],['TRIAGE','LLM']]},{l:'CRITIQUE',ty:'LLM',a:4,c:5,r:1,d:'Review diff, flag regressions',tk:3100},{l:'APPROVE',ty:'GATE',a:-1,c:6,r:1,d:'Human approval gate (timeout 15m)',tk:0},{l:'DEPLOY',ty:'API',a:6,c:7,r:1,d:'POST /deploy {env: staging}',tk:0}],e:[[0,1],[1,2],[1,3],[2,4],[3,4],[4,5],[5,6],[6,7],[7,8]]},
 {n:'INCIDENT.TRIAGE',nd:[{l:'ALERT.IN',ty:'API',a:6,c:0,r:1,d:'POST /webhook/alert',tk:0},{l:'CLASSIFY',ty:'LLM',a:0,c:1,r:1,d:'Classify severity and affected service',tk:1100},{l:'LOGS',ty:'API',a:5,c:2,r:0,d:'GET /logs?service=payments',tk:0},{l:'METRICS',ty:'API',a:5,c:2,r:2,d:'GET /metrics/query',tk:0},{l:'HYPOTHESIS',ty:'SUB',a:0,c:3,r:1,d:'Rank and verify root-cause hypotheses',tk:5200,sub:[['RANK','LLM'],['VERIFY','API'],['SCORE','LLM']]},{l:'RUNBOOK',ty:'LLM',a:1,c:4,r:1,d:'Pick runbook, draft remediation',tk:2300},{l:'APPROVE',ty:'GATE',a:-1,c:5,r:1,d:'On-call approval gate (timeout 5m)',tk:0},{l:'AUTO.FIX',ty:'API',a:6,c:6,r:1,d:'POST /runbook/exec',tk:0}],e:[[0,1],[1,2],[1,3],[2,4],[3,4],[4,5],[5,6],[6,7]]}];
-const TABS=['AGENTS','SWARM','WORKFLOW','COST','EVENTS','HEALTH','TRACES','MEMORY','TOOLS','SAFETY','EVALS','SCHEDULE','PROMPTS','VAULT','REPLAY','ACCESS','EDITOR','THEMES','RUNS','CONTROL','WORK-FIRST'],TABMAP={agents:0,net:1,radar:1,cube:1,time:6,task:2,gen:2,helix:2,hist:3,stat:3,gauge:3,spark:3,rings:3,log:4,alert:4,bits:4,hex:4,pulse:5,wave:5,mem:7,ctx:7,tools:8,guard:9,evals:10,sched:11};
+const TABS=['AGENTS','SWARM','WORKFLOW','COST','EVENTS','HEALTH','TRACES','MEMORY','TOOLS','SAFETY','EVALS','SCHEDULE','PROMPTS','VAULT','REPLAY','ACCESS','EDITOR','THEMES','RUNS','CONTROL','WORK-FIRST','EVIDENCE'],TABMAP={agents:0,net:1,radar:1,cube:1,time:6,task:2,gen:2,helix:2,hist:3,stat:3,gauge:3,spark:3,rings:3,log:4,alert:4,bits:4,hex:4,pulse:5,wave:5,mem:7,ctx:7,tools:8,guard:9,evals:10,sched:11};
 let HT=[],MHt=[];const mo={o:0,t:0,tab:0,title:'',sy:0,max:0,sel:2,sw:0,wf:0,node:[4,4],filter:0,r:null,cr:null,drag:null,hb:null,ch:'or',hsv:null,pd:null,pa:2};
 const chist=[];let hcnt=0;
 function cst(a){return(a.tin*a.cfg[1]+a.tout*a.cfg[2])/1000}
@@ -595,7 +652,7 @@ function vEditor(x,y,w,h){const nr=w<640,F=WF[mo.wf],N=F.nd,TY=['LLM','API','SUB
  box(px,jy+10,pw,J.length*13+12,fg,1);J.forEach((l,i)=>tx(l.slice(0,Math.floor(pw/5.6)),px+8,jy+28+i*13,9,'left',0,fg,.85));chip(px+pw-100,jy+J.length*13+22,100,22,'COPY JSON',0,()=>{try{navigator.clipboard.writeText(J.join('\n'))}catch(e){}});
  return Math.max(by+36,jy+J.length*13+50)}
 
-const VIEWS=[vAgents,vSwarm,vFlow,vCost,vEvents,vHealth,vTrace,vMemory,vTools,vSafety,vEvals,vSched,vPrompts,vVault,vReplay,vAccess,vEditor,vTheme,vDnaRuns,vDnaControl,vDnaOptimizer];
+const VIEWS=[vAgents,vSwarm,vFlow,vCost,vEvents,vHealth,vTrace,vMemory,vTools,vSafety,vEvals,vSched,vPrompts,vVault,vReplay,vAccess,vEditor,vTheme,vDnaRuns,vDnaControl,vDnaOptimizer,vDnaEvidence];
 function drawModal(){mo.o+=(mo.t-mo.o)*.16;if(Math.abs(mo.t-mo.o)<.004)mo.o=mo.t;MHt=[];if(mo.o<=0)return;
  const e=1-Math.pow(1-mo.o,3);g.fillStyle='rgba(0,0,0,'+.84*e+')';g.fillRect(0,0,W,H);g.strokeStyle=ha(IN,.07*e);g.lineWidth=1;g.beginPath();for(let yy=0;yy<H;yy+=4){g.moveTo(0,yy+.5);g.lineTo(W,yy+.5)}g.stroke();
  const mw=Math.min(W-12,1140),mh=W<760?H-12:Math.min(H-16,Math.max(440,H*.88)),x=(W-mw)/2,he=mh*e,y=H/2-he/2;mo.r=[x,H/2-mh/2,mw,mh];
@@ -608,7 +665,7 @@ function drawModal(){mo.o+=(mo.t-mo.o)*.16;if(Math.abs(mo.t-mo.o)<.004)mo.o=mo.t
  const tb=34+Math.ceil(TABS.length/per)*th,cx=x+16,cy=y+tb+12,cw=mw-32,ch=mh-tb-26;mo.cr=[x,cy,mw,ch];mo.sy=Math.max(0,Math.min(mo.sy,mo.max||0));
  g.save();g.beginPath();g.rect(x+4,cy-4,mw-8,ch+8);g.clip();g.translate(0,-mo.sy);const bot=VIEWS[mo.tab](cx,cy,cw,ch);g.restore();
  g.fillStyle=OR;g.fillRect(x+8,y+he-18,160,14);
- const source=sqlRun()&&[18,19].includes(mo.tab)?'MIXED SQL + DEMO':mo.tab===20?'FUTURE / DESIGN':runIndex===2?'FUTURE / DESIGN':'DEMO / NOT LIVE';
+ const source=sqlRun()&&mo.tab===21?'SQL / VERIFIED EVENTS':sqlRun()&&[18,19].includes(mo.tab)?'MIXED SQL + DEMO':mo.tab===20?'FUTURE / DESIGN':runIndex===2?'FUTURE / DESIGN':'DEMO / NOT LIVE';
  tx(source,x+88,y+he-8,8,'center',1,AT);
  mo.max=Math.max(0,bot-(cy+ch)+12);if(mo.max>0){g.fillStyle=OR;const bh=Math.max(30,ch*ch/(ch+mo.max));g.fillRect(x+mw-8,cy+(ch-bh)*mo.sy/mo.max,5,bh)}
  g.globalAlpha=1}
