@@ -1,0 +1,40 @@
+const MEMS=[['SHARED.VEC','VECTOR',184320,412,.92,14],['EPISODIC','LOG',52410,96,.71,6],['KNOWLEDGE.GRAPH','GRAPH',9210,31,.84,2],['SESSION.KV','KV',1284,4,.97,31]],RQ=['payment retry policy','oauth token refresh flow','incident 4421 postmortem','style guide: error handling','deploy runbook staging','rate limit headers','schema migration 0042','customer tier limits'];
+function vMemory(x,y,w,h){const nr=w<640;lab('SHARED MEMORY STORES',x,y+10);
+ let by=table(x,y+14,w,nr?[['STORE',.4],['TYPE',.2],['ITEMS',.4]]:[['STORE',.2],['TYPE',.1],['ITEMS',.15],['SIZE MB',.12],['HIT RATE',.15],['WRITES/S',.13],['STATE',.15]],MEMS.map(m=>nr?[m[0],m[1],String(m[2]+(t*m[5]|0))]:[m[0],m[1],(m[2]+(t*m[5]|0)).toLocaleString('en-US'),String(m[3]+(t*m[5]/400|0)),(m[4]*100).toFixed(0)+'%',String(m[5]),'SYNCED']),24,-1)+22;
+ lab('CONTEXT WINDOW PER AGENT  (200K LIMIT)  /  SYS  TOOLS  HISTORY  RETRIEVED',x,by);const SG2=[[.08,.35],[.12,.6],[.55,1],[.25,0]];
+ ag.forEach((a,i)=>{const ry=by+14+i*26,f=.35+.55*Math.abs(Math.sin(t*.15+i*1.1)),bl=Math.max(60,w-(nr?110:250)),b0=x+(nr?60:110);tx('A'+(i+1)+(nr?'':' '+a.n),x,ry+14,9,'left',1);let c0=b0;
+  SG2.forEach((q,k)=>{const sw=bl*f*q[0];g.fillStyle=k==3?OR:fg;g.globalAlpha=k==3?1:q[1];g.fillRect(c0,ry+3,sw-1,14);c0+=sw});g.globalAlpha=1;box(b0,ry+2,bl,16,fg,1);tx(K(f*2e5)+(f>.85&&t*3%2<1?'  COMPACT':''),b0+bl+8,ry+14,9,'left',1,f>.85?OR:fg)});
+ const r2=by+14+7*26+12;lab('RECENT RETRIEVALS',x,r2);for(let k=0;k<5;k++){const q=RQ[(Math.floor(t/1.5)+k)%RQ.length];tx('> '+q,x,r2+22+k*18,10,'left',k==0,fg,k?.7:1);tx((3+((k*5+Math.floor(t/1.5))%6))+' hits  sim '+(.91-k*.04).toFixed(2),x+w,r2+22+k*18,9,'right',0,OR)}return r2+22+5*18+6}
+const TL=[['repo.search','SEARCH',0],['repo.patch','CODE',2],['lint.run','CODE',2],['ci.run','CI',3],['vector.query','DB',5],['kb.lookup','DB',0],['api.gateway','HTTP',6],['deploy.run','DEPLOY',6],['calendar.read','API',1]];
+function vTools(x,y,w,h){const nr=w<640;lab('TOOL REGISTRY  (EXTERNAL API CALLS)',x,y+10);
+ const rows=TL.map((q,i)=>{const cpm=20+((i*37)%80)+Math.round(8*Math.sin(t+i)),p95=60+((i*53)%400),er=((i*7)%30)/10+.2*Math.abs(Math.sin(t*.5+i)),dg=er>2.2;return nr?[q[0],q[1],cpm+'/m',dg?'DEGRADED':'UP']:[q[0],q[1],'A'+(q[2]+1),cpm+'/min',p95+'ms',er.toFixed(1)+'%',(40+(i*13)%55)+'%',er>2.5?'HALF-OPEN':'CLOSED',dg?'DEGRADED':'UP']});
+ let by=table(x,y+14,w,nr?[['TOOL',.4],['KIND',.2],['CALLS',.2],['STATUS',.3]]:[['TOOL',.16],['KIND',.09],['OWNER',.07],['CALLS',.1],['P95',.09],['ERR',.08],['QUOTA',.09],['BREAKER',.13],['STATUS',.12]],rows,24,-1)+22;
+ lab('MODEL ROUTING & CACHE',x,by);const M=['MODEL-L','MODEL-M','MODEL-S'],tk=M.map(m=>ag.filter(a=>a.cfg[0]==m).reduce((q,a)=>q+a.tin+a.tout,0)),ts=tk.reduce((q,v)=>q+v,0)||1,RO=['planning, code','analysis, review','tests, memory, routing'];
+ by=table(x,by+14,w,[['MODEL',.15],['ROUTED FOR',.3],['SHARE',.12],['CACHE HIT',.13],['FALLBACKS',.13],['$/1K OUT',.14]],M.map((m,i)=>[m,RO[i],(tk[i]/ts*100).toFixed(0)+'%',(38+i*9+Math.round(3*Math.sin(t+i)))+'%',String(2+i*3+(t/20|0)),'$'+[.015,.0075,.0015][i]]),24,-1)+18;
+ tx('ROUTE: plan/code > L   review/analyse > M   test/route > S   FALLBACK L > M on 429 or timeout > 20s',x,by,10,'left',1,OR);tx('SEMANTIC CACHE saved est. $'+(t*.0021).toFixed(2)+' this session',x,by+18,10,'left',0,fg,.7);return by+34}
+const PERM=[[1,0,0,1,0],[1,1,0,0,1],[1,1,1,0,0],[1,0,1,0,0],[1,0,0,0,0],[1,1,0,0,0],[1,0,1,1,1]],CAP=['READ','WRITE','EXEC','NET','SPEND'];
+const AP0=[['DEPLOY staging',6,'MED'],['DELETE branch feat/oauth',2,'HIGH'],['SEND release email',5,'LOW'],['RUN migration 0042',2,'HIGH'],['RAISE budget cap $2 > $5',1,'MED']];
+let AP=AP0.slice(0,3).map((a,i)=>({id:'AP-'+(210+i),act:a[0],a:a[1],risk:a[2],b:-i*25})),apn=3;
+function apNew(){const a=AP0[apn%AP0.length];AP.push({id:'AP-'+(210+apn),act:a[0],a:a[1],risk:a[2],b:t});apn++}
+function vSafety(x,y,w,h){const nr=w<640,n=nr?2:4,bw=(w-(n-1)*8)/n,u=Math.floor(t/7);
+ [['BLOCKED ACTIONS',String(14+u)],['PII REDACTED',String(212+u*3)],['INJECTION ATTEMPTS',String(3+(u>>2))],['POLICY VIOLATIONS','0']].forEach(([l,v],i)=>{const bx=x+(i%n)*(bw+8),by=y+Math.floor(i/n)*64;box(bx,by,bw,58);tx(l,bx+8,by+16,9,'left',1,fg,.6);dx(v,bx+8,by+47,22,i==2?OR:fg)});
+ const y2=y+Math.ceil(4/n)*64+10,rh=nr?44:36;lab('APPROVAL QUEUE  (HUMAN IN THE LOOP)',x,y2+10);let yy=y2+24;
+ if(!AP.length)tx('NO PENDING APPROVALS',x,yy+16,11,'left',1,fg,.6);
+ AP.forEach(q=>{const hi=q.risk=='HIGH';box(x,yy,w,rh-4,fg,1);tx(q.id,x+8,yy+22,10,'left',1,OR);tx(q.act,x+70,yy+22,10,'left',1);const ax=nr?x+70:x+w*.4,ay=nr?yy+36:yy+22;tx('by A'+(q.a+1)+' '+ag[q.a].n,ax,ay,9,'left',0,fg,.7);
+  const rx=nr?x+w-170:x+w*.58;g.fillStyle=hi?OR:q.risk=='MED'?fg:bg;g.fillRect(rx,yy+8,44,16);if(q.risk=='LOW')box(rx,yy+8,44,16,fg,1);tx(q.risk,rx+22,yy+20,9,'center',1,hi?AT:q.risk=='MED'?bg:fg);
+  if(!nr)tx('waiting '+((t-q.b)|0)+'s',x+w*.68,yy+22,9,'left',0,fg,.7);const bx=x+w-156;g.fillStyle=OR;g.fillRect(bx,yy+5,72,rh-14);tx('APPROVE',bx+36,yy+21,9,'center',1,AT);box(bx+78,yy+5,72,rh-14,fg,2);tx('DENY',bx+114,yy+21,9,'center',1);
+  hit(bx,yy+5,72,rh-14,()=>{const k=AP.indexOf(q);if(k>=0)AP.splice(k,1)});hit(bx+78,yy+5,72,rh-14,()=>{const k=AP.indexOf(q);if(k>=0)AP.splice(k,1)});yy+=rh});
+ const y3=yy+16;lab('PERMISSION MATRIX  (CLICK TO TOGGLE)',x,y3);const cwp=Math.min(60,(Math.min(w,nr?w:w*.55)-110)/5);CAP.forEach((c,k)=>tx(c,x+110+k*cwp,y3+22,8,'left',1,fg,.6));
+ ag.forEach((a,i)=>{const ry=y3+30+i*24;tx('A'+(i+1)+' '+a.n,x,ry+15,9,'left',1);CAP.forEach((c,k)=>{const cx=x+110+k*cwp,on=PERM[i][k];if(on){g.fillStyle=k==4?OR:fg;g.fillRect(cx,ry+3,cwp-8,16)}else box(cx,ry+3,cwp-8,16,fg,1);hit(cx,ry+3,cwp-8,16,()=>{PERM[i][k]^=1})})});
+ const px=nr?x:x+w*.58,py=nr?y3+30+7*24+14:y3;lab('ACTIVE POLICIES',px,py);['PII: redact before any LLM egress','SECRETS: vault references only','EXEC: sandboxed, no network by default','SPEND: $2 per task, $50 per day','DESTRUCTIVE ACTIONS: approval always'].forEach((p,i)=>tx('> '+p,px,py+22+i*18,10,'left',0,fg,.85));
+ return Math.max(y3+30+7*24,py+22+5*18)+10}
+const SU=[['CODEGEN-LITE',240,96.2,.8],['TOOL-USE',180,93.1,-1.4],['PLANNING',120,90.5,2.2],['SAFETY-RED',300,99,.1],['LONG-CONTEXT',90,84.7,-3.1],['E2E-WORKFLOWS',60,88.3,1]],EMT=['ACCURACY','LATENCY','COST','SAFETY','CONSIST'];
+function vEvals(x,y,w,h){const nr=w<640,n=nr?2:5,bw=(w-(n-1)*8)/n,wb=Math.sin(t*.3)*.4;
+ [['OVERALL SCORE',(91.6+wb).toFixed(1)],['PASS RATE',(95.2+wb*.5).toFixed(1)+'%'],['REGRESSIONS','2'],['HALLUCINATION',(1.4+wb*.1).toFixed(1)+'%'],['CRITIC AVG',(8.4+wb*.1).toFixed(1)+'/10']].forEach(([l,v],i)=>{const bx=x+(i%n)*(bw+8),by=y+Math.floor(i/n)*64;box(bx,by,bw,58);tx(l,bx+8,by+16,9,'left',1,fg,.6);dx(v,bx+8,by+47,Math.min(22,bw/6),i==2?OR:fg)});
+ const y2=y+Math.ceil(5/n)*64+10,lw=nr?w:w*.55;lab('BENCHMARK SUITES  (VS BASELINE)',x,y2+10);
+ let b1=table(x,y2+14,lw,[['SUITE',.34],['CASES',.14],['PASS %',.17],['DELTA',.15],['STATUS',.2]],SU.map((q,i)=>{const p=q[2]+Math.sin(t*.4+i)*.3,d=q[3]+Math.sin(t*.3+i)*.1;return[q[0],String(q[1]),p.toFixed(1),(d>=0?'+':'')+d.toFixed(1),p<86?'FAIL':d<-1?'WATCH':'PASS']}),24,-1);
+ const hx=nr?x:x+lw+18,hw=nr?w:w-lw-18,hy=nr?b1+16:y2;lab('AGENT QUALITY HEATMAP',hx,hy+10);const cw=Math.min(54,(hw-100)/5);EMT.forEach((c,k)=>tx(c,hx+96+k*cw,hy+26,8,'left',1,fg,.6));
+ ag.forEach((a,i)=>{const ry=hy+32+i*20;tx('A'+(i+1)+' '+a.n,hx,ry+13,9,'left',1);EMT.forEach((c,k)=>{const v=Math.max(.3,Math.min(1,.7+.28*Math.sin(i*1.7+k*2.3+t*.1))),cx=hx+96+k*cw;g.fillStyle=fg;g.globalAlpha=v*.9;g.fillRect(cx,ry+1,cw-4,16);g.globalAlpha=1;tx(String(v*100|0),cx+(cw-4)/2,ry+13,9,'center',1,v>.6?bg:fg)})});
+ const y3=Math.max(b1,hy+32+7*20)+22;lab('SCORE OVER LAST 30 RUNS  (DASHED = BASELINE 88)',x,y3);const cy=y3+14,chh=100;box(x,cy,w,chh,fg,1);
+ const pts=[];for(let i=0;i<30;i++)pts.push([x+6+i/29*(w-12),cy+chh-8-((86+i*.18+Math.sin(i*.9+Math.floor(t/3))*1.4-80)/16)*(chh-16)]);g.setLineDash([6,4]);ln([[x,cy+chh-8-.5*(chh-16)],[x+w,cy+chh-8-.5*(chh-16)]],fg,1);g.setLineDash([]);ln(pts,OR,2.5);pts.forEach(p=>{g.fillStyle=fg;g.fillRect(p[0]-2,p[1]-2,4,4)});return cy+chh+10}
+

@@ -4,7 +4,8 @@ Six original HTML files were submitted by the user, followed by the updated Brut
 
 | Preview | Source |
 | --- | --- |
-| [Brutal Index / Control Room (latest)](./dna-brutal-index-dark.html) | `dna-brutal-index-dark.html` |
+| [Brutal Index / Command Deck (latest)](./dna-brutal-index-dark.html) | `dna-brutal-index-dark.html` |
+| [Brutal Index / Control Room (previous)](./archive/dna-brutal-index-control-room.html) | `archive/dna-brutal-index-control-room.html` |
 | [Brutal Index / Dark + Modals (previous)](./archive/dna-brutal-index-dark-modals.html) | `archive/dna-brutal-index-dark-modals.html` |
 | [Brutal Index / Dark (original)](./archive/dna-brutal-index-dark-original.html) | `archive/dna-brutal-index-dark-original.html` |
 | [Brutal Index](./dna-brutal-index.html) | `dna-brutal-index.html` |
@@ -19,3 +20,5 @@ The separately submitted [Bio-Neural Cortex (2)](./dna-bio-neural-cortex-2.html)
 The original design files were not modified.
 
 **Control Room** expands from 6 to 12 inspector tabs (Agents, Swarm, Workflow, Cost, Events, Health, Traces, Memory, Tools, Safety, Evals, Themes). It includes theme presets and browser-local custom color choices. Display metrics remain illustrative rather than connected to production DNA.
+
+**Command Deck** expands to 18 inspectors with Schedule, Prompt Versions, Vault, Replay, Access, and Workflow Editor. This browser demo shows simulated data and has no live DNA engine connection. To keep gallery publishing lightweight, its JavaScript is served in ordered chunks and reassembled before execution.
