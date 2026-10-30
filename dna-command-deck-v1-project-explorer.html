@@ -227,12 +227,12 @@ function vDnaRuns(x,y,w,h){
  lab('PROJECT → SELECT RUN → NODE → EVIDENCE',x,y+10);
  let px=x,by=y+20,cw=(w-12)/3;
  SAMPLE_RUNS.forEach((r,i)=>{const bx=px+i*(cw+6),on=i===runIndex;g.fillStyle=on?OR:bg;g.fillRect(bx,by,cw,49);box(bx,by,cw,49,on?OR:fg);
-  tx(r.id+'  '+r.name.slice(0,Math.max(8,Math.floor(cw/8)-6)),bx+7,by+19,10,'left',1,on?AT:fg);
+  tx((i===0&&sqlRun()?'SQL RUN #'+liveDoc.runID:r.id+'  '+r.name).slice(0,Math.max(8,Math.floor(cw/8)-6)),bx+7,by+19,10,'left',1,on?AT:fg);
   tx((i===0&&sqlRun()?'SQL CONNECTED':r.proof).slice(0,Math.floor(cw/6)),bx+7,by+37,8,'left',0,on?AT:fg,.82);
   hit(bx,by,cw,49,()=>selectRun(i))});
  by+=72;
- tx(SAMPLE_RUNS[runIndex].type,x,by,10,'left',1,OR);
- tx(SAMPLE_RUNS[runIndex].desc.slice(0,Math.max(35,Math.floor(w/6))),x,by+21,10,'left',0,fg,.85);
+ tx(sqlRun()?'CURRENT SQL RUN #'+liveDoc.runID:SAMPLE_RUNS[runIndex].type,x,by,10,'left',1,OR);
+ tx((sqlRun()?'Current SQL inspector snapshot; process identity comes from SQL, not the HELLO example.':SAMPLE_RUNS[runIndex].desc).slice(0,Math.max(35,Math.floor(w/6))),x,by+21,10,'left',0,fg,.85);
  by+=41;lab('PERSISTED NODE INSTANCE WHEN CONNECTED / EXAMPLE OTHERWISE',x,by);
  const nodes=runNodes(),rh=39,nh=nodes.length;
  nodes.forEach((n,i)=>{const yy=by+15+i*rh,xx=x+(i%2)*6;
