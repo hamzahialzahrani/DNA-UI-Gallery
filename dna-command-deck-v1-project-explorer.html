@@ -101,6 +101,26 @@ const PANEL_STAGE={agents:'DEMO',helix:'ART',net:'DEMO',pulse:'ART',log:'DEMO',r
 const SQL_PANELS=new Set(['stat','task','log','alert']);
 const RUN_COLORS={DONE:null,WAITING:'accent',READY:'ink',PROCESSING:'accent',NEW:'muted',DESIGN:'muted'};
 let scene='projects',projectIndex=0,runIndex=0,liveDoc=null,liveState='OFFLINE',liveWhen=0,liveAttempts=0;
+let sqlProjects=null,sqlProjectsState='OFFLINE',selectedSqlProjectID=null;
+async function refreshProjects(){
+ if(document.hidden||location.protocol==='file:'){sqlProjects=null;sqlProjectsState='OFFLINE';return}
+ try{
+  const r=await fetch('/api/v1/engine/projects',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+  const d=await r.json();
+  if(!r.ok||d.state!=='OK'||d.database!=='DNADevEngineTest'||
+   !Array.isArray(d.projects)||d.projects.length>12||!Array.isArray(d.runs)||d.runs.length>40){
+   sqlProjects=null;sqlProjectsState=String(d.state||'UNAVAILABLE').slice(0,20);return;
+  }
+  if(d.projects.some(p=>!Number.isSafeInteger(p.projectID)||p.projectID<1)||
+   d.runs.some(q=>!Number.isSafeInteger(q.runID)||!Number.isSafeInteger(q.projectID))){
+    sqlProjects=null;sqlProjectsState='INVALID';return;
+  }
+  sqlProjects={projects:d.projects,runs:d.runs,capturedAt:d.capturedAt};
+  sqlProjectsState='OK';
+ }catch{sqlProjects=null;sqlProjectsState='OFFLINE'}
+}
+setInterval(()=>{if(!document.hidden)refreshProjects()},10000);
+refreshProjects();
 function sqlRun(){return projectIndex===0&&runIndex===0&&liveState==='OK'&&liveDoc!==null}
 function dataTag(){return sqlRun()?'SQL / VERIFIED':'DEMO / NOT LIVE'}
 function runNodes(){
@@ -146,6 +166,9 @@ function drawProjectsScreen(){
  g.globalAlpha=1;
  const pw=Math.min(W-32,1170),x=(W-pw)/2;
  tagAt('DNA / HOME',x,22,110);
+ g.fillStyle=sqlProjectsState==='OK'?OR:IN;g.fillRect(x,48,Math.min(pw,250),25);
+ tx('SQL PROJECT INDEX  '+(sqlProjectsState==='OK'?'REAL':'NOT CONNECTED')+'  >',x+8,65,10,'left',1,sqlProjectsState==='OK'?AT:PA);
+ HT.push([x,48,Math.min(pw,250),25,()=>openM(22,'SQL PROJECTS / RUNS')]);
  dx('PROJECTS',x,100,Math.max(38,Math.min(74,W/10)),IN);
  tx(W<720?'WORK FIRST / SELECT PROJECT':'WORK-FIRST ORCHESTRATION  /  SELECT PROJECT TO OPEN COMMAND DECK',x,124,10,'left',1,IN,.8);
  tx(W<720?'01 LAB + 02 DESIGN EXAMPLES':'PROJECT INDEX   /   01 VERIFIED LAB + 02 ARCHITECTURAL EXAMPLES',x,145,9,'left',1,OR);
@@ -428,7 +451,7 @@ ag.forEach((a,i)=>{a.cfg=AC[i];a.tin=2e4+rnd()*6e4;a.tout=8e3+rnd()*2e4;a.calls=
 const TS=[['T-101','SHIP FEATURE: OAUTH LOGIN','HIERARCHICAL',[1,0,2,3,4,6],.62],['T-102','TRIAGE INCIDENT #4471','PEER MESH',[0,5,6],.35],['T-103','REFACTOR PAYMENTS MODULE','PIPELINE',[1,2,4,3],.8],['T-104','DRAFT RELEASE NOTES','PIPELINE',[5,0],.95],['T-105','SECURITY SCAN: REPO','HIERARCHICAL',[6,0,3],.12]];
 const WF=[{n:'FEATURE.SHIP',nd:[{l:'INTAKE',ty:'LLM',a:0,c:0,r:1,d:'Parse request, extract acceptance criteria',tk:1400},{l:'PLAN',ty:'LLM',a:1,c:1,r:1,d:'Build task graph, assign swarm',tk:2600},{l:'FETCH.REPO',ty:'API',a:6,c:2,r:0,d:'GET /repos/{id}/tree',tk:0},{l:'RECALL',ty:'API',a:5,c:2,r:2,d:'POST /vector/query',tk:0},{l:'CODE',ty:'SUB',a:2,c:3,r:1,d:'Implement change in an isolated sub-workflow',tk:9800,sub:[['SPEC','LLM'],['IMPLEMENT','LLM'],['LINT','API'],['FIX','LLM']]},{l:'TEST',ty:'SUB',a:3,c:4,r:1,d:'Generate and run the test suite',tk:4200,sub:[['GEN.TESTS','LLM'],['RUN.CI','API'],['TRIAGE','LLM']]},{l:'CRITIQUE',ty:'LLM',a:4,c:5,r:1,d:'Review diff, flag regressions',tk:3100},{l:'APPROVE',ty:'GATE',a:-1,c:6,r:1,d:'Human approval gate (timeout 15m)',tk:0},{l:'DEPLOY',ty:'API',a:6,c:7,r:1,d:'POST /deploy {env: staging}',tk:0}],e:[[0,1],[1,2],[1,3],[2,4],[3,4],[4,5],[5,6],[6,7],[7,8]]},
 {n:'INCIDENT.TRIAGE',nd:[{l:'ALERT.IN',ty:'API',a:6,c:0,r:1,d:'POST /webhook/alert',tk:0},{l:'CLASSIFY',ty:'LLM',a:0,c:1,r:1,d:'Classify severity and affected service',tk:1100},{l:'LOGS',ty:'API',a:5,c:2,r:0,d:'GET /logs?service=payments',tk:0},{l:'METRICS',ty:'API',a:5,c:2,r:2,d:'GET /metrics/query',tk:0},{l:'HYPOTHESIS',ty:'SUB',a:0,c:3,r:1,d:'Rank and verify root-cause hypotheses',tk:5200,sub:[['RANK','LLM'],['VERIFY','API'],['SCORE','LLM']]},{l:'RUNBOOK',ty:'LLM',a:1,c:4,r:1,d:'Pick runbook, draft remediation',tk:2300},{l:'APPROVE',ty:'GATE',a:-1,c:5,r:1,d:'On-call approval gate (timeout 5m)',tk:0},{l:'AUTO.FIX',ty:'API',a:6,c:6,r:1,d:'POST /runbook/exec',tk:0}],e:[[0,1],[1,2],[1,3],[2,4],[3,4],[4,5],[5,6],[6,7]]}];
-const TABS=['AGENTS','SWARM','WORKFLOW','COST','EVENTS','HEALTH','TRACES','MEMORY','TOOLS','SAFETY','EVALS','SCHEDULE','PROMPTS','VAULT','REPLAY','ACCESS','EDITOR','THEMES','RUNS','CONTROL','WORK-FIRST','EVIDENCE'],TABMAP={agents:0,net:1,radar:1,cube:1,time:6,task:2,gen:2,helix:2,hist:3,stat:3,gauge:3,spark:3,rings:3,log:4,alert:4,bits:4,hex:4,pulse:5,wave:5,mem:7,ctx:7,tools:8,guard:9,evals:10,sched:11};
+const TABS=['AGENTS','SWARM','WORKFLOW','COST','EVENTS','HEALTH','TRACES','MEMORY','TOOLS','SAFETY','EVALS','SCHEDULE','PROMPTS','VAULT','REPLAY','ACCESS','EDITOR','THEMES','RUNS','CONTROL','WORK-FIRST','EVIDENCE','SQL PROJECTS'],TABMAP={agents:0,net:1,radar:1,cube:1,time:6,task:2,gen:2,helix:2,hist:3,stat:3,gauge:3,spark:3,rings:3,log:4,alert:4,bits:4,hex:4,pulse:5,wave:5,mem:7,ctx:7,tools:8,guard:9,evals:10,sched:11};
 let HT=[],MHt=[];const mo={o:0,t:0,tab:0,title:'',sy:0,max:0,sel:2,sw:0,wf:0,node:[4,4],filter:0,r:null,cr:null,drag:null,hb:null,ch:'or',hsv:null,pd:null,pa:2};
 const chist=[];let hcnt=0;
 function cst(a){return(a.tin*a.cfg[1]+a.tout*a.cfg[2])/1000}
@@ -652,7 +675,51 @@ function vEditor(x,y,w,h){const nr=w<640,F=WF[mo.wf],N=F.nd,TY=['LLM','API','SUB
  box(px,jy+10,pw,J.length*13+12,fg,1);J.forEach((l,i)=>tx(l.slice(0,Math.floor(pw/5.6)),px+8,jy+28+i*13,9,'left',0,fg,.85));chip(px+pw-100,jy+J.length*13+22,100,22,'COPY JSON',0,()=>{try{navigator.clipboard.writeText(J.join('\n'))}catch(e){}});
  return Math.max(by+36,jy+J.length*13+50)}
 
-const VIEWS=[vAgents,vSwarm,vFlow,vCost,vEvents,vHealth,vTrace,vMemory,vTools,vSafety,vEvals,vSched,vPrompts,vVault,vReplay,vAccess,vEditor,vTheme,vDnaRuns,vDnaControl,vDnaOptimizer,vDnaEvidence];
+function vDnaSqlProjects(x,y,w,h){
+ lab('SQL PROJECT INDEX / AUTHENTICATED / READ-ONLY',x,y+10);
+ let by=y+23;
+ if(sqlProjectsState!=='OK'||!sqlProjects){
+  box(x,by,w,94,fg,1);
+  tx('NO VERIFIED SQL PROJECT INDEX',x+11,by+24,12,'left',1,OR);
+  tx('SOURCE: '+sqlProjectsState+' / no SQL project names or runs available.',x+11,by+47,10);
+  tx('The three design scenarios on the Projects screen remain DEMO.',x+11,by+69,10);
+  return by+114;
+ }
+ const index=sqlProjects;
+ tx('REAL PROJECTS '+index.projects.length+'  /  RECENT RUNS '+index.runs.length+
+  ' (LAST 40 MAX)  /  UTC '+String(index.capturedAt||'').slice(11,19),
+  x,by+13,10,'left',1,OR);by+=29;
+ const choice=selectedSqlProjectID;
+ const projects=index.projects;
+ lab('PUBLISHED PROJECTS — SELECT TO FILTER RUNS',x,by);by+=15;
+ projects.forEach((p,i)=>{
+  const yy=by+i*40,on=choice===p.projectID;
+  g.fillStyle=on?OR:bg;g.fillRect(x,yy,w,36);box(x,yy,w,36,fg,1);
+  tx('#'+p.projectID+'  '+String(p.code).slice(0,25),x+8,yy+15,10,'left',1,on?AT:fg);
+  tx(String(p.name).slice(0,Math.max(10,Math.floor(w/15))),x+8,yy+30,9,'left',0,on?AT:fg,.75);
+  tx('RUNS '+p.runs+'  /  FLOWS '+p.workflows,x+w-8,yy+23,9,'right',1,on?AT:OR);
+  hit(x,yy,w,36,()=>{selectedSqlProjectID=on?null:p.projectID;mo.sy=0});
+ });
+ by+=projects.length*40+19;
+ lab('RECENT SQL RUNS — READ-ONLY / LATEST FIRST',x,by);by+=18;
+ const runs=index.runs.filter(r=>choice===null||r.projectID===choice);
+ if(!runs.length)tx('NO RUNS FOUND IN RECENT 40-RUN WINDOW',x,by+20,10,'left',1,OR);
+ runs.forEach((r,i)=>{
+  const yy=by+i*33,isCurrent=sqlRun()&&liveDoc.runID===r.runID;
+  box(x,yy,w,30,fg,1);
+  tx('#'+r.runID+'  '+String(r.workflowCode).slice(0,21),x+8,yy+13,10,'left',1,isCurrent?OR:fg);
+  tx('PROJECT #'+r.projectID+'  /  '+String(r.outcomeCode||'RUNNING'),x+8,yy+26,9,'left',0,fg,.65);
+  if(w>=640)tx('STATUS '+r.statusID+'  '+String(r.createdAtUTC).slice(0,19),
+   x+w-10,yy+19,9,'right',1);
+  if(isCurrent)hit(x,yy,w,30,()=>{projectIndex=0;runIndex=0;mo.tab=18;mo.sy=0});
+ });
+ by+=Math.max(45,runs.length*33)+12;
+ lab('LIMITATIONS / NO MISLEADING METRICS',x,by);
+ tx('Only project and latest-run metadata are SQL-backed; no selected-run detail API yet.',x,by+20,10);
+ tx('Select matching current run for its SQL inspector. Other runs remain index-only.',x,by+39,10);
+ return by+65;
+}
+const VIEWS=[vAgents,vSwarm,vFlow,vCost,vEvents,vHealth,vTrace,vMemory,vTools,vSafety,vEvals,vSched,vPrompts,vVault,vReplay,vAccess,vEditor,vTheme,vDnaRuns,vDnaControl,vDnaOptimizer,vDnaEvidence,vDnaSqlProjects];
 function drawModal(){mo.o+=(mo.t-mo.o)*.16;if(Math.abs(mo.t-mo.o)<.004)mo.o=mo.t;MHt=[];if(mo.o<=0)return;
  const e=1-Math.pow(1-mo.o,3);g.fillStyle='rgba(0,0,0,'+.84*e+')';g.fillRect(0,0,W,H);g.strokeStyle=ha(IN,.07*e);g.lineWidth=1;g.beginPath();for(let yy=0;yy<H;yy+=4){g.moveTo(0,yy+.5);g.lineTo(W,yy+.5)}g.stroke();
  const mw=Math.min(W-12,1140),mh=W<760?H-12:Math.min(H-16,Math.max(440,H*.88)),x=(W-mw)/2,he=mh*e,y=H/2-he/2;mo.r=[x,H/2-mh/2,mw,mh];
@@ -665,7 +732,7 @@ function drawModal(){mo.o+=(mo.t-mo.o)*.16;if(Math.abs(mo.t-mo.o)<.004)mo.o=mo.t
  const tb=34+Math.ceil(TABS.length/per)*th,cx=x+16,cy=y+tb+12,cw=mw-32,ch=mh-tb-26;mo.cr=[x,cy,mw,ch];mo.sy=Math.max(0,Math.min(mo.sy,mo.max||0));
  g.save();g.beginPath();g.rect(x+4,cy-4,mw-8,ch+8);g.clip();g.translate(0,-mo.sy);const bot=VIEWS[mo.tab](cx,cy,cw,ch);g.restore();
  g.fillStyle=OR;g.fillRect(x+8,y+he-18,160,14);
- const source=sqlRun()&&mo.tab===21?'SQL / VERIFIED EVENTS':sqlRun()&&[18,19].includes(mo.tab)?'MIXED SQL + DEMO':'DEMO / NOT LIVE';
+ const source=sqlProjectsState==='OK'&&mo.tab===22?'SQL / VERIFIED PROJECTS':sqlRun()&&mo.tab===21?'SQL / VERIFIED EVENTS':sqlRun()&&[18,19].includes(mo.tab)?'MIXED SQL + DEMO':'DEMO / NOT LIVE';
  tx(source,x+88,y+he-8,8,'center',1,AT);
  mo.max=Math.max(0,bot-(cy+ch)+12);if(mo.max>0){g.fillStyle=OR;const bh=Math.max(30,ch*ch/(ch+mo.max));g.fillRect(x+mw-8,cy+(ch-bh)*mo.sy/mo.max,5,bh)}
  g.globalAlpha=1}
